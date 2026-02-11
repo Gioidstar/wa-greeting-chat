@@ -166,7 +166,10 @@ function sendWhatsapp() {
       }, 1000);
     } else {
       console.error('Error saving form data', data);
-      alert('There was an error submitting your form. Please try again.');
+      const errorMsg = data.data && data.data.message
+        ? data.data.message
+        : 'There was an error submitting your form. Please try again.';
+      alert(errorMsg);
     }
   })
   .catch(error => {
