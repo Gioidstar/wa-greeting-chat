@@ -58,8 +58,12 @@ wa-greeting-chat/
 ├── script.js                      # JavaScript untuk interaksi form
 ├── style.css                      # Styling widget dan form
 ├── README.md                      # Dokumentasi
+├── admin/
+│   ├── admin-style.css            # Styling halaman admin
+│   └── admin-script.js            # JavaScript halaman admin
 └── includes/
-    └── class-github-updater.php   # GitHub auto-updater
+    ├── class-github-updater.php   # GitHub auto-updater
+    └── class-submissions-table.php # Custom admin list table
 ```
 
 ## Requirements
@@ -163,6 +167,18 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+
+### Version 1.6
+- Custom admin submissions table (menggantikan default WordPress list table)
+- Export CSV dengan filter date range dan search
+- Search submissions across semua field (name, email, company, dll)
+- Date range filter untuk memfilter submissions berdasarkan tanggal
+- Bulk delete submissions
+- Tombol "View Detail" untuk melihat detail lengkap submission
+- Service Group dengan cascading dropdown (parent-child taxonomy)
+- Perbaikan taxonomy assignment (hanya child term di kolom Services)
+- Perbaikan encoding &amp; pada nama taxonomy
+- Perbaikan tampilan header chat box (alignment)
 
 ### Version 1.5
 - Penambahan fitur blocked email domains

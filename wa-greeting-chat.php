@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.5
+ * Version: 1.6
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WA_GREETING_CHAT_VERSION', '1.5');
+define('WA_GREETING_CHAT_VERSION', '1.6');
 define('WA_GREETING_CHAT_FILE', __FILE__);
 define('WA_GREETING_CHAT_PATH', plugin_dir_path(__FILE__));
 
@@ -53,19 +53,43 @@ add_action('wp_enqueue_scripts', function () {
         $blocked_domains = array_map('trim', explode(',', strtolower($blocked_domains_raw)));
         $blocked_domains = array_values(array_filter($blocked_domains));
     }
+    // Build service group tree for cascading dropdowns
+    $service_tree = [];
+    $parent_terms = get_terms([
+        'taxonomy' => 'wa_service',
+        'hide_empty' => false,
+        'parent' => 0,
+    ]);
+    if (!is_wp_error($parent_terms)) {
+        foreach ($parent_terms as $parent) {
+            $children = get_terms([
+                'taxonomy' => 'wa_service',
+                'hide_empty' => false,
+                'parent' => $parent->term_id,
+            ]);
+            $child_names = [];
+            if (!is_wp_error($children)) {
+                foreach ($children as $child) {
+                    $child_names[] = $child->name;
+                }
+            }
+            $service_tree[] = [
+                'name' => html_entity_decode($parent->name),
+                'children' => array_map('html_entity_decode', $child_names),
+            ];
+        }
+    }
+
     wp_localize_script('wa-greeting-chat-script', 'waGreeting', [
         'ajax_url' => admin_url('admin-ajax.php'),
         'admin_wa' => get_option('wa_admin_number', ''),
-        'blocked_domains' => $blocked_domains
+        'blocked_domains' => $blocked_domains,
+        'service_tree' => $service_tree,
     ]);
 });
 
 // Insert HTML into footer
 add_action('wp_footer', function () {
-  $services = get_terms([
-    'taxonomy' => 'wa_service',
-    'hide_empty' => false,
-  ]);
   $chat_label = get_option('wa_chat_label', 'Click to Chat');
   $chat_image = get_option('wa_chat_image', 'https://randomuser.me/api/portraits/women/44.jpg');
   $privacy_policy_url = get_option('wa_privacy_policy_url', '#');
@@ -100,14 +124,19 @@ add_action('wp_footer', function () {
     <input id="wa-company" type="text" placeholder="Enter Company">
     <small id="error-company" class="wa-error"></small>
 
-    <label>Service <span class="required">*</span></label>
-    <select id="wa-plugin">
-    <option value="" selected disabled>Choose Service</option>
-      <?php foreach ($services as $service): ?>
-        <option value="<?= esc_attr($service->name); ?>"><?= esc_html($service->name); ?></option>
-      <?php endforeach; ?>
+    <label>What Service Do You Need?<span class="required">*</span></label>
+    <select id="wa-service-group">
+      <option value="" selected disabled>Choose Service </option>
     </select>
-    <small id="error-service" class="wa-error"></small>
+    <small id="error-service-group" class="wa-error"></small>
+
+    <div id="wa-service-wrapper" style="display:none;">
+      <label>What Service are You interested in<span class="required">*</span></label>
+      <select id="wa-plugin">
+        <option value="" selected disabled>Choose Service</option>
+      </select>
+      <small id="error-service" class="wa-error"></small>
+    </div>
 
     <label>WhatsApp Number<span class="required">*</span></label>
     <input id="wa-number" type="number" placeholder="Example: 81234567890">
@@ -159,13 +188,14 @@ function wa_greeting_save_submission() {
     }
 
     $data = [
-        'name'    => sanitize_text_field($_POST['name']),
-        'email'   => $email,
-        'company' => sanitize_text_field($_POST['company']),
-        'plugin'  => sanitize_text_field($_POST['plugin']),
-        'number'  => sanitize_text_field($_POST['number']),
-        'message' => sanitize_textarea_field($_POST['message']),
-        'url'     => isset($_POST['url']) ? esc_url_raw($_POST['url']) : '',
+        'name'          => sanitize_text_field($_POST['name']),
+        'email'         => $email,
+        'company'       => sanitize_text_field($_POST['company']),
+        'service_group' => isset($_POST['service_group']) ? sanitize_text_field($_POST['service_group']) : '',
+        'plugin'        => sanitize_text_field($_POST['plugin']),
+        'number'        => sanitize_text_field($_POST['number']),
+        'message'       => sanitize_textarea_field($_POST['message']),
+        'url'           => isset($_POST['url']) ? esc_url_raw($_POST['url']) : '',
     ];
 
     // Create the post with metadata
@@ -179,9 +209,23 @@ function wa_greeting_save_submission() {
     // Ensure company field is explicitly saved as post meta
     update_post_meta($post_id, 'company', $data['company']);
 
-    // Set the service taxonomy term if provided
+    // Set the service taxonomy term (only child, or parent if no child)
+    $term_id = null;
     if (!empty($_POST['plugin'])) {
-        wp_set_post_terms($post_id, [sanitize_text_field($_POST['plugin'])], 'wa_service');
+        $term = get_term_by('name', sanitize_text_field($_POST['plugin']), 'wa_service');
+        if ($term) {
+            $term_id = $term->term_id;
+        }
+    }
+    // Only use parent term if no child term was found
+    if (!$term_id && !empty($_POST['service_group'])) {
+        $parent_term = get_term_by('name', sanitize_text_field($_POST['service_group']), 'wa_service');
+        if ($parent_term) {
+            $term_id = $parent_term->term_id;
+        }
+    }
+    if ($term_id) {
+        wp_set_post_terms($post_id, [$term_id], 'wa_service');
     }
 
     // Send email notification to admin
@@ -224,6 +268,7 @@ function send_admin_notification_email($data, $post_id) {
     $message .= "Name: " . $data['name'] . "\n";
     $message .= "Email: " . $data['email'] . "\n";
     $message .= "Company: " . $data['company'] . "\n";
+    $message .= "Service Group: " . $data['service_group'] . "\n";
     $message .= "Service: " . $data['plugin'] . "\n";
     $message .= "WhatsApp Number: " . $data['number'] . "\n";
     $message .= "Message: " . $data['message'] . "\n";
@@ -271,12 +316,29 @@ add_action('init', function () {
 
     register_taxonomy('wa_service', 'wa_submission', [
         'label' => 'Services',
+        'labels' => [
+            'name' => 'Services',
+            'singular_name' => 'Service',
+            'parent_item' => 'Service Group',
+            'parent_item_colon' => 'Service Group:',
+            'add_new_item' => 'Add New Service',
+            'edit_item' => 'Edit Service',
+        ],
         'rewrite' => ['slug' => 'service'],
-        'hierarchical' => false,
+        'hierarchical' => true,
         'show_ui' => true,
         'show_admin_column' => true,
         'show_in_rest' => true,
     ]);
+});
+
+// Redirect default CPT list to custom submissions page
+add_action('admin_init', function () {
+    global $pagenow;
+    if ($pagenow === 'edit.php' && isset($_GET['post_type']) && $_GET['post_type'] === 'wa_submission' && !isset($_GET['page'])) {
+        wp_redirect(admin_url('admin.php?page=wa-submissions'));
+        exit;
+    }
 });
 
 // Display custom fields in admin metabox
@@ -292,20 +354,42 @@ add_action('add_meta_boxes', function () {
 });
 
 function wa_render_submission_details($post) {
-    $fields = ['name', 'email', 'company', 'plugin', 'number', 'message', 'url'];
+    $fields = ['name', 'email', 'company', 'service_group', 'plugin', 'number', 'message', 'url'];
+    $labels = [
+        'name' => 'Name',
+        'email' => 'Email',
+        'company' => 'Company',
+        'service_group' => 'Service Group',
+        'plugin' => 'Service',
+        'number' => 'Number',
+        'message' => 'Message',
+        'url' => 'URL',
+    ];
     echo '<table class="form-table">';
     foreach ($fields as $field) {
         $value = get_post_meta($post->ID, $field, true);
+        $label = isset($labels[$field]) ? $labels[$field] : ucfirst($field);
         echo '<tr>';
-        echo '<th><label>' . ucfirst($field === 'plugin' ? 'service' : $field) . '</label></th>';
+        echo '<th><label>' . esc_html($label) . '</label></th>';
         echo '<td><input type="text" value="' . esc_attr($value) . '" class="regular-text" readonly></td>';
         echo '</tr>';
     }
     echo '</table>';
 }
 
-// Add admin settings for header image, label and admin number
+// Register admin menu pages
 add_action('admin_menu', function () {
+    // Custom submissions page
+    add_submenu_page(
+        'edit.php?post_type=wa_submission',
+        'All Submissions',
+        'All Submissions',
+        'read',
+        'wa-submissions',
+        'wa_render_submissions_page'
+    );
+
+    // Settings page
     add_submenu_page(
         'edit.php?post_type=wa_submission',
         'WA Chat Settings',
@@ -315,6 +399,158 @@ add_action('admin_menu', function () {
         'wa_render_settings_page'
     );
 });
+
+// Remove the default CPT "All Submissions" submenu link
+add_action('admin_menu', function () {
+    remove_submenu_page('edit.php?post_type=wa_submission', 'edit.php?post_type=wa_submission');
+}, 999);
+
+// Enqueue admin styles/scripts for custom page
+add_action('admin_enqueue_scripts', function ($hook) {
+    if (strpos($hook, 'wa-submissions') === false) {
+        return;
+    }
+    wp_enqueue_style(
+        'wa-admin-style',
+        plugin_dir_url(WA_GREETING_CHAT_FILE) . 'admin/admin-style.css',
+        [],
+        WA_GREETING_CHAT_VERSION
+    );
+    wp_enqueue_script(
+        'wa-admin-script',
+        plugin_dir_url(WA_GREETING_CHAT_FILE) . 'admin/admin-script.js',
+        [],
+        WA_GREETING_CHAT_VERSION,
+        true
+    );
+});
+
+// Render custom submissions page
+function wa_render_submissions_page() {
+    // Handle CSV export before any HTML output
+    if (isset($_GET['wa_export_csv']) && $_GET['wa_export_csv'] == '1') {
+        wa_handle_csv_export();
+        return;
+    }
+
+    // Handle bulk delete
+    if (isset($_GET['action']) && $_GET['action'] === 'delete' && !empty($_GET['submission_ids'])) {
+        $nonce = isset($_GET['_wpnonce']) ? $_GET['_wpnonce'] : '';
+        if (wp_verify_nonce($nonce, 'bulk-wa_submissions')) {
+            $ids = array_map('intval', $_GET['submission_ids']);
+            foreach ($ids as $id) {
+                wp_delete_post($id, true);
+            }
+            echo '<div class="notice notice-success"><p>' . count($ids) . ' submission(s) deleted.</p></div>';
+        }
+    }
+
+    require_once WA_GREETING_CHAT_PATH . 'includes/class-submissions-table.php';
+
+    $table = new WA_Submissions_List_Table();
+    $table->prepare_items();
+    ?>
+    <div class="wrap wa-submissions-wrap">
+        <h1 class="wp-heading-inline">WA Chat Submissions</h1>
+        <p class="description">All form submissions from the WhatsApp greeting chat widget.</p>
+
+        <form method="get">
+            <input type="hidden" name="page" value="wa-submissions" />
+            <?php
+            $table->search_box('Search Submissions', 'wa-submission-search');
+            $table->display();
+            ?>
+        </form>
+    </div>
+    <?php
+}
+
+// Handle CSV export
+function wa_handle_csv_export() {
+    if (!current_user_can('read')) {
+        wp_die('You do not have permission to export submissions.');
+    }
+
+    $args = [
+        'post_type'      => 'wa_submission',
+        'post_status'    => 'publish',
+        'posts_per_page' => -1,
+        'orderby'        => 'date',
+        'order'          => 'DESC',
+    ];
+
+    // Date range filter
+    $date_from = isset($_GET['date_from']) ? sanitize_text_field($_GET['date_from']) : '';
+    $date_to   = isset($_GET['date_to'])   ? sanitize_text_field($_GET['date_to'])   : '';
+    if ($date_from || $date_to) {
+        $date_query = ['inclusive' => true];
+        if ($date_from) {
+            $date_query['after'] = $date_from;
+        }
+        if ($date_to) {
+            $date_query['before'] = date('Y-m-d', strtotime($date_to . ' +1 day'));
+        }
+        $args['date_query'] = [$date_query];
+    }
+
+    // Search filter
+    $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
+    if (!empty($search)) {
+        $args['meta_query'] = [
+            'relation' => 'OR',
+            ['key' => 'name',          'value' => $search, 'compare' => 'LIKE'],
+            ['key' => 'email',         'value' => $search, 'compare' => 'LIKE'],
+            ['key' => 'company',       'value' => $search, 'compare' => 'LIKE'],
+            ['key' => 'message',       'value' => $search, 'compare' => 'LIKE'],
+            ['key' => 'number',        'value' => $search, 'compare' => 'LIKE'],
+            ['key' => 'service_group', 'value' => $search, 'compare' => 'LIKE'],
+            ['key' => 'plugin',        'value' => $search, 'compare' => 'LIKE'],
+        ];
+    }
+
+    $query = new WP_Query($args);
+
+    // Generate filename
+    $filename = 'wa-submissions';
+    if ($date_from) $filename .= '-from-' . $date_from;
+    if ($date_to)   $filename .= '-to-' . $date_to;
+    $filename .= '-' . date('Ymd-His') . '.csv';
+
+    // CSV headers
+    header('Content-Type: text/csv; charset=utf-8');
+    header('Content-Disposition: attachment; filename="' . $filename . '"');
+    header('Pragma: no-cache');
+    header('Expires: 0');
+
+    $output = fopen('php://output', 'w');
+
+    // BOM for Excel UTF-8 compatibility
+    fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+
+    // Header row
+    fputcsv($output, ['No', 'Name', 'Email', 'Company', 'Service Group', 'Service', 'WhatsApp Number', 'Message', 'Page URL', 'Date']);
+
+    // Data rows
+    $counter = 0;
+    foreach ($query->posts as $post) {
+        $counter++;
+        fputcsv($output, [
+            $counter,
+            get_post_meta($post->ID, 'name', true),
+            get_post_meta($post->ID, 'email', true),
+            get_post_meta($post->ID, 'company', true),
+            get_post_meta($post->ID, 'service_group', true),
+            get_post_meta($post->ID, 'plugin', true),
+            get_post_meta($post->ID, 'number', true),
+            get_post_meta($post->ID, 'message', true),
+            get_post_meta($post->ID, 'url', true),
+            get_the_date('Y-m-d H:i:s', $post),
+        ]);
+    }
+
+    fclose($output);
+    exit;
+}
 
 function wa_render_settings_page() {
     if (isset($_POST['wa_chat_settings_submit'])) {
