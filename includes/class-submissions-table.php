@@ -175,17 +175,16 @@ class WA_Submissions_List_Table extends WP_List_Table {
             <input type="date" id="date_to" name="date_to" value="<?= $date_to ?>" />
             <?php submit_button('Filter', 'secondary', 'filter_action', false); ?>
             <?php if ($date_from || $date_to) : ?>
-                <a href="<?= esc_url(admin_url('admin.php?page=wa-submissions')) ?>" class="button">Clear</a>
+                <a href="<?= esc_url(admin_url('edit.php?post_type=wa_submission&page=wa-submissions')) ?>" class="button">Clear</a>
             <?php endif; ?>
         </div>
         <div class="alignleft actions">
             <a href="<?= esc_url(add_query_arg([
-                'page'          => 'wa-submissions',
-                'wa_export_csv' => '1',
-                'date_from'     => $date_from,
-                'date_to'       => $date_to,
-                's'             => $search,
-            ], admin_url('admin.php'))) ?>" class="button button-primary">
+                'action'    => 'wa_export_excel',
+                'date_from' => $date_from,
+                'date_to'   => $date_to,
+                's'         => $search,
+            ], admin_url('admin-post.php'))) ?>" class="button button-primary">
                 <span class="dashicons dashicons-download" style="vertical-align:middle;margin-right:4px;font-size:16px;line-height:1.4;"></span>
                 Export CSV
             </a>

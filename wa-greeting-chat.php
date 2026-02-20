@@ -336,10 +336,13 @@ add_action('init', function () {
 add_action('admin_init', function () {
     global $pagenow;
     if ($pagenow === 'edit.php' && isset($_GET['post_type']) && $_GET['post_type'] === 'wa_submission' && !isset($_GET['page'])) {
-        wp_redirect(admin_url('admin.php?page=wa-submissions'));
+        wp_redirect(admin_url('edit.php?post_type=wa_submission&page=wa-submissions'));
         exit;
     }
 });
+
+// Handle Excel export via admin_post (clean, no prior output)
+add_action('admin_post_wa_export_excel', 'wa_handle_excel_export');
 
 // Display custom fields in admin metabox
 add_action('add_meta_boxes', function () {
@@ -427,12 +430,6 @@ add_action('admin_enqueue_scripts', function ($hook) {
 
 // Render custom submissions page
 function wa_render_submissions_page() {
-    // Handle CSV export before any HTML output
-    if (isset($_GET['wa_export_csv']) && $_GET['wa_export_csv'] == '1') {
-        wa_handle_csv_export();
-        return;
-    }
-
     // Handle bulk delete
     if (isset($_GET['action']) && $_GET['action'] === 'delete' && !empty($_GET['submission_ids'])) {
         $nonce = isset($_GET['_wpnonce']) ? $_GET['_wpnonce'] : '';
@@ -454,7 +451,8 @@ function wa_render_submissions_page() {
         <h1 class="wp-heading-inline">WA Chat Submissions</h1>
         <p class="description">All form submissions from the WhatsApp greeting chat widget.</p>
 
-        <form method="get">
+        <form method="get" action="<?= esc_url(admin_url('edit.php')) ?>">
+            <input type="hidden" name="post_type" value="wa_submission" />
             <input type="hidden" name="page" value="wa-submissions" />
             <?php
             $table->search_box('Search Submissions', 'wa-submission-search');
@@ -465,8 +463,8 @@ function wa_render_submissions_page() {
     <?php
 }
 
-// Handle CSV export
-function wa_handle_csv_export() {
+// Handle Excel export (CSV format, compatible with Excel)
+function wa_handle_excel_export() {
     if (!current_user_can('read')) {
         wp_die('You do not have permission to export submissions.');
     }
@@ -516,7 +514,6 @@ function wa_handle_csv_export() {
     if ($date_to)   $filename .= '-to-' . $date_to;
     $filename .= '-' . date('Ymd-His') . '.csv';
 
-    // CSV headers
     header('Content-Type: text/csv; charset=utf-8');
     header('Content-Disposition: attachment; filename="' . $filename . '"');
     header('Pragma: no-cache');
@@ -524,8 +521,8 @@ function wa_handle_csv_export() {
 
     $output = fopen('php://output', 'w');
 
-    // BOM for Excel UTF-8 compatibility
-    fprintf($output, chr(0xEF) . chr(0xBB) . chr(0xBF));
+    // UTF-8 BOM so Excel reads encoding correctly
+    fwrite($output, "\xEF\xBB\xBF");
 
     // Header row
     fputcsv($output, ['No', 'Name', 'Email', 'Company', 'Service Group', 'Service', 'WhatsApp Number', 'Message', 'Page URL', 'Date']);
