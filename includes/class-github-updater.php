@@ -18,6 +18,7 @@ class WA_Greeting_Chat_GitHub_Updater {
     private $plugin_file;
     private $github_response;
     private $access_token;
+    private $cache_key = 'wa_github_updater_response';
 
     /**
      * Constructor
@@ -64,16 +65,24 @@ class WA_Greeting_Chat_GitHub_Updater {
     }
 
     /**
-     * Get GitHub release info
+     * Get GitHub release info (with transient cache)
      */
     private function get_github_release() {
         if (!empty($this->github_response)) {
             return $this->github_response;
         }
 
+        // Check transient cache first (cache for 6 hours)
+        $cached = get_transient($this->cache_key);
+        if ($cached !== false) {
+            $this->github_response = $cached;
+            return $this->github_response;
+        }
+
         $url = "https://api.github.com/repos/{$this->username}/{$this->repo}/releases/latest";
 
         $args = [
+            'timeout' => 10,
             'headers' => [
                 'Accept' => 'application/vnd.github.v3+json',
                 'User-Agent' => 'WordPress/' . get_bloginfo('version')
@@ -84,21 +93,32 @@ class WA_Greeting_Chat_GitHub_Updater {
             $args['headers']['Authorization'] = "token {$this->access_token}";
         }
 
+        error_log('WA Greeting Chat Updater - Fetching GitHub API: ' . $url);
+
         $response = wp_remote_get($url, $args);
 
         if (is_wp_error($response)) {
-            error_log('WA Greeting Chat - GitHub API Error: ' . $response->get_error_message());
-            return false;
-        }
-        
-        $response_code = wp_remote_retrieve_response_code($response);
-        if ($response_code !== 200) {
-            error_log('WA Greeting Chat - GitHub API Response Code: ' . $response_code);
-            error_log('WA Greeting Chat - GitHub API Response: ' . wp_remote_retrieve_body($response));
+            error_log('WA Greeting Chat Updater - API Error: ' . $response->get_error_message());
             return false;
         }
 
-        $this->github_response = json_decode(wp_remote_retrieve_body($response));
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            error_log('WA Greeting Chat Updater - API Response Code: ' . $response_code);
+            error_log('WA Greeting Chat Updater - API Body: ' . wp_remote_retrieve_body($response));
+            return false;
+        }
+
+        $body = json_decode(wp_remote_retrieve_body($response));
+        if (empty($body) || !isset($body->tag_name)) {
+            error_log('WA Greeting Chat Updater - Invalid response body');
+            return false;
+        }
+
+        $this->github_response = $body;
+
+        // Cache for 6 hours to avoid rate limiting
+        set_transient($this->cache_key, $body, 6 * HOUR_IN_SECONDS);
 
         return $this->github_response;
     }
@@ -110,14 +130,14 @@ class WA_Greeting_Chat_GitHub_Updater {
      * @return object Modified transient
      */
     public function check_update($transient) {
-        if (empty($transient->checked)) {
-            return $transient;
+        if (!is_object($transient)) {
+            $transient = new stdClass();
         }
 
         $release = $this->get_github_release();
 
         if (!$release) {
-            error_log('WA Greeting Chat - No GitHub release found');
+            error_log('WA Greeting Chat Updater - No GitHub release found');
             return $transient;
         }
 
@@ -127,7 +147,7 @@ class WA_Greeting_Chat_GitHub_Updater {
         // Remove 'v' prefix from tag if present
         $latest_version = ltrim($release->tag_name, 'v');
 
-        error_log('WA Greeting Chat - Current: ' . $current_version . ', Latest: ' . $latest_version . ', Tag: ' . $release->tag_name);
+        error_log('WA Greeting Chat Updater - Current: ' . $current_version . ', Latest: ' . $latest_version . ', Slug: ' . $this->slug);
 
         if (version_compare($latest_version, $current_version, '>')) {
             // Find the zip asset
@@ -143,10 +163,11 @@ class WA_Greeting_Chat_GitHub_Updater {
                 }
             }
 
-            error_log('WA Greeting Chat - Update found! Downloading from: ' . $download_url);
+            error_log('WA Greeting Chat Updater - Update available! ' . $current_version . ' -> ' . $latest_version);
 
             $transient->response[$this->slug] = (object) [
                 'slug' => dirname($this->slug),
+                'plugin' => $this->slug,
                 'new_version' => $latest_version,
                 'url' => $release->html_url,
                 'package' => $download_url,
@@ -156,7 +177,9 @@ class WA_Greeting_Chat_GitHub_Updater {
                 'requires_php' => '7.4',
             ];
         } else {
-            error_log('WA Greeting Chat - No update needed (current >= latest)');
+            // Make sure plugin is not in response (no update needed)
+            unset($transient->response[$this->slug]);
+            error_log('WA Greeting Chat Updater - No update needed (' . $current_version . ' >= ' . $latest_version . ')');
         }
 
         return $transient;
@@ -187,6 +210,17 @@ class WA_Greeting_Chat_GitHub_Updater {
 
         $plugin_data = $this->get_plugin_data();
 
+        // Find download URL (prefer zip asset)
+        $download_url = $release->zipball_url;
+        if (!empty($release->assets)) {
+            foreach ($release->assets as $asset) {
+                if (strpos($asset->name, '.zip') !== false) {
+                    $download_url = $asset->browser_download_url;
+                    break;
+                }
+            }
+        }
+
         return (object) [
             'name' => $plugin_data['Name'],
             'slug' => dirname($this->slug),
@@ -198,7 +232,7 @@ class WA_Greeting_Chat_GitHub_Updater {
                 'description' => $plugin_data['Description'],
                 'changelog' => $this->parse_changelog($release->body),
             ],
-            'download_link' => $release->zipball_url,
+            'download_link' => $download_url,
             'last_updated' => $release->published_at,
             'tested' => get_bloginfo('version'),
             'requires_php' => '7.4',
@@ -248,6 +282,9 @@ class WA_Greeting_Chat_GitHub_Updater {
         // Move from downloaded folder to proper plugin folder
         $wp_filesystem->move($result['destination'], $plugin_folder);
         $result['destination'] = $plugin_folder;
+
+        // Clear updater cache after install
+        delete_transient($this->cache_key);
 
         // Re-activate plugin if it was active
         if (is_plugin_active($this->slug)) {
