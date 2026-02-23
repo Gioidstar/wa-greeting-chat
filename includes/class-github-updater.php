@@ -86,7 +86,15 @@ class WA_Greeting_Chat_GitHub_Updater {
 
         $response = wp_remote_get($url, $args);
 
-        if (is_wp_error($response) || wp_remote_retrieve_response_code($response) !== 200) {
+        if (is_wp_error($response)) {
+            error_log('WA Greeting Chat - GitHub API Error: ' . $response->get_error_message());
+            return false;
+        }
+        
+        $response_code = wp_remote_retrieve_response_code($response);
+        if ($response_code !== 200) {
+            error_log('WA Greeting Chat - GitHub API Response Code: ' . $response_code);
+            error_log('WA Greeting Chat - GitHub API Response: ' . wp_remote_retrieve_body($response));
             return false;
         }
 
@@ -109,6 +117,7 @@ class WA_Greeting_Chat_GitHub_Updater {
         $release = $this->get_github_release();
 
         if (!$release) {
+            error_log('WA Greeting Chat - No GitHub release found');
             return $transient;
         }
 
@@ -117,6 +126,8 @@ class WA_Greeting_Chat_GitHub_Updater {
 
         // Remove 'v' prefix from tag if present
         $latest_version = ltrim($release->tag_name, 'v');
+
+        error_log('WA Greeting Chat - Current: ' . $current_version . ', Latest: ' . $latest_version . ', Tag: ' . $release->tag_name);
 
         if (version_compare($latest_version, $current_version, '>')) {
             // Find the zip asset
@@ -132,6 +143,8 @@ class WA_Greeting_Chat_GitHub_Updater {
                 }
             }
 
+            error_log('WA Greeting Chat - Update found! Downloading from: ' . $download_url);
+
             $transient->response[$this->slug] = (object) [
                 'slug' => dirname($this->slug),
                 'new_version' => $latest_version,
@@ -142,6 +155,8 @@ class WA_Greeting_Chat_GitHub_Updater {
                 'tested' => get_bloginfo('version'),
                 'requires_php' => '7.4',
             ];
+        } else {
+            error_log('WA Greeting Chat - No update needed (current >= latest)');
         }
 
         return $transient;
