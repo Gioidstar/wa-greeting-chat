@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.6
+ * Version: 1.7
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WA_GREETING_CHAT_VERSION', '1.6');
+define('WA_GREETING_CHAT_VERSION', '1.7');
 define('WA_GREETING_CHAT_FILE', __FILE__);
 define('WA_GREETING_CHAT_PATH', plugin_dir_path(__FILE__));
 
@@ -43,41 +43,46 @@ add_action('init', function() {
     }
 });
 
-// Enqueue styles and scripts
+// Enqueue frontend styles and scripts
 add_action('wp_enqueue_scripts', function () {
-    wp_enqueue_style('wa-greeting-chat-style', plugin_dir_url(__FILE__) . 'style.css');
-    wp_enqueue_script('wa-greeting-chat-script', plugin_dir_url(__FILE__) . 'script.js', [], false, true);
+    if (is_admin()) return;
+    wp_enqueue_style('wa-greeting-chat-style', plugin_dir_url(__FILE__) . 'style.css', [], WA_GREETING_CHAT_VERSION);
+    wp_enqueue_script('wa-greeting-chat-script', plugin_dir_url(__FILE__) . 'script.js', [], WA_GREETING_CHAT_VERSION, true);
     $blocked_domains_raw = get_option('wa_blocked_email_domains', '');
     $blocked_domains = [];
     if (!empty($blocked_domains_raw)) {
         $blocked_domains = array_map('trim', explode(',', strtolower($blocked_domains_raw)));
         $blocked_domains = array_values(array_filter($blocked_domains));
     }
-    // Build service group tree for cascading dropdowns
-    $service_tree = [];
-    $parent_terms = get_terms([
-        'taxonomy' => 'wa_service',
-        'hide_empty' => false,
-        'parent' => 0,
-    ]);
-    if (!is_wp_error($parent_terms)) {
-        foreach ($parent_terms as $parent) {
-            $children = get_terms([
-                'taxonomy' => 'wa_service',
-                'hide_empty' => false,
-                'parent' => $parent->term_id,
-            ]);
-            $child_names = [];
-            if (!is_wp_error($children)) {
-                foreach ($children as $child) {
-                    $child_names[] = $child->name;
+    // Build service group tree (cached)
+    $service_tree = get_transient('wa_service_tree');
+    if ($service_tree === false) {
+        $service_tree = [];
+        $parent_terms = get_terms([
+            'taxonomy' => 'wa_service',
+            'hide_empty' => false,
+            'parent' => 0,
+        ]);
+        if (!is_wp_error($parent_terms)) {
+            foreach ($parent_terms as $parent) {
+                $children = get_terms([
+                    'taxonomy' => 'wa_service',
+                    'hide_empty' => false,
+                    'parent' => $parent->term_id,
+                ]);
+                $child_names = [];
+                if (!is_wp_error($children)) {
+                    foreach ($children as $child) {
+                        $child_names[] = $child->name;
+                    }
                 }
+                $service_tree[] = [
+                    'name' => html_entity_decode($parent->name),
+                    'children' => array_map('html_entity_decode', $child_names),
+                ];
             }
-            $service_tree[] = [
-                'name' => html_entity_decode($parent->name),
-                'children' => array_map('html_entity_decode', $child_names),
-            ];
         }
+        set_transient('wa_service_tree', $service_tree, HOUR_IN_SECONDS);
     }
 
     wp_localize_script('wa-greeting-chat-script', 'waGreeting', [
@@ -139,7 +144,20 @@ add_action('wp_footer', function () {
     </div>
 
     <label>WhatsApp Number<span class="required">*</span></label>
-    <input id="wa-number" type="number" placeholder="Example: 81234567890">
+    <div class="wa-phone-wrap">
+      <div class="wa-country-select" id="wa-country-select">
+        <div class="wa-country-selected" id="wa-country-selected">
+          <span class="wa-country-flag" id="wa-country-flag">🇮🇩</span>
+          <span class="wa-country-arrow">▾</span>
+        </div>
+        <div class="wa-country-dropdown" id="wa-country-dropdown">
+          <input type="text" class="wa-country-search" id="wa-country-search" placeholder="Search country...">
+          <ul class="wa-country-list" id="wa-country-list"></ul>
+        </div>
+      </div>
+      <input type="hidden" id="wa-country-code" value="62">
+      <input id="wa-number" type="tel" placeholder="81234567890">
+    </div>
     <small id="error-number" class="wa-error"></small>
 
     <label>Message<span class="required">*</span></label>
@@ -231,9 +249,6 @@ function wa_greeting_save_submission() {
     // Send email notification to admin
     send_admin_notification_email($data, $post_id);
 
-    // Log the successful submission
-    error_log('WA Submission saved successfully. Post ID: ' . $post_id . ' | Company: ' . $data['company']);
-
     wp_send_json_success(['id' => $post_id]);
 }
 
@@ -273,7 +288,7 @@ function send_admin_notification_email($data, $post_id) {
     $message .= "WhatsApp Number: " . $data['number'] . "\n";
     $message .= "Message: " . $data['message'] . "\n";
     $message .= "URL: " . $data['url'] . "\n\n";
-    
+
     $message .= "You can view this submission in WordPress admin:\n";
     $message .= admin_url('post.php?post=' . $post_id . '&action=edit') . "\n\n";
     
@@ -332,11 +347,11 @@ add_action('init', function () {
     ]);
 });
 
-// Redirect default CPT list to custom submissions page
+// Redirect default CPT list to Dashboard page
 add_action('admin_init', function () {
     global $pagenow;
     if ($pagenow === 'edit.php' && isset($_GET['post_type']) && $_GET['post_type'] === 'wa_submission' && !isset($_GET['page'])) {
-        wp_redirect(admin_url('edit.php?post_type=wa_submission&page=wa-submissions'));
+        wp_redirect(admin_url('edit.php?post_type=wa_submission&page=wa-dashboard'));
         exit;
     }
 });
@@ -368,13 +383,28 @@ function wa_render_submission_details($post) {
         'message' => 'Message',
         'url' => 'URL',
     ];
+    echo '<div class="wa-detail-header">';
+    echo '<img src="' . esc_url(plugin_dir_url(WA_GREETING_CHAT_FILE) . 'assets/icon.svg') . '" alt="WA Greeting Chat" class="wa-detail-logo">';
+    echo '<div class="wa-detail-header-text">';
+    echo '<strong>' . esc_html(get_post_meta($post->ID, 'name', true)) . '</strong>';
+    echo '<span>' . esc_html(get_the_date('d M Y, H:i', $post)) . '</span>';
+    echo '</div>';
+    echo '</div>';
     echo '<table class="form-table">';
     foreach ($fields as $field) {
         $value = get_post_meta($post->ID, $field, true);
         $label = isset($labels[$field]) ? $labels[$field] : ucfirst($field);
         echo '<tr>';
         echo '<th><label>' . esc_html($label) . '</label></th>';
-        echo '<td><input type="text" value="' . esc_attr($value) . '" class="regular-text" readonly></td>';
+        if ($field === 'message') {
+            echo '<td><textarea class="large-text" rows="4" readonly>' . esc_textarea($value) . '</textarea></td>';
+        } elseif ($field === 'email') {
+            echo '<td><a href="mailto:' . esc_attr($value) . '">' . esc_html($value) . '</a></td>';
+        } elseif ($field === 'url' && !empty($value)) {
+            echo '<td><a href="' . esc_url($value) . '" target="_blank">' . esc_html($value) . '</a></td>';
+        } else {
+            echo '<td><input type="text" value="' . esc_attr($value) . '" class="regular-text" readonly></td>';
+        }
         echo '</tr>';
     }
     echo '</table>';
@@ -382,6 +412,16 @@ function wa_render_submission_details($post) {
 
 // Register admin menu pages
 add_action('admin_menu', function () {
+    // Dashboard page
+    add_submenu_page(
+        'edit.php?post_type=wa_submission',
+        'Dashboard',
+        'Dashboard',
+        'read',
+        'wa-dashboard',
+        'wa_render_dashboard_page'
+    );
+
     // Custom submissions page
     add_submenu_page(
         'edit.php?post_type=wa_submission',
@@ -403,30 +443,278 @@ add_action('admin_menu', function () {
     );
 });
 
-// Remove the default CPT "All Submissions" submenu link
+// Remove default CPT submenu and reorder: Dashboard, Services, All Submissions, Settings
 add_action('admin_menu', function () {
-    remove_submenu_page('edit.php?post_type=wa_submission', 'edit.php?post_type=wa_submission');
+    global $submenu;
+    $parent = 'edit.php?post_type=wa_submission';
+
+    // Remove default "All Submissions" CPT link
+    remove_submenu_page($parent, $parent);
+
+    if (!isset($submenu[$parent])) return;
+
+    // Define desired order: Dashboard, Services, All Submissions, Settings
+    $order_map = [
+        'wa-dashboard'    => 0,
+        'wa_service'      => 1, // taxonomy slug (partial match)
+        'wa-submissions'  => 2,
+        'wa-chat-settings'=> 3,
+    ];
+    $sorted = [];
+    $rest   = [];
+
+    foreach ($submenu[$parent] as $item) {
+        $slug = $item[2];
+        $placed = false;
+        foreach ($order_map as $key => $pos) {
+            if ($slug === $key || strpos($slug, 'taxonomy=' . $key) !== false) {
+                $sorted[$pos] = $item;
+                $placed = true;
+                break;
+            }
+        }
+        if (!$placed) {
+            $rest[] = $item;
+        }
+    }
+    ksort($sorted);
+    $submenu[$parent] = array_values(array_merge($sorted, $rest));
 }, 999);
 
-// Enqueue admin styles/scripts for custom page
+// Enqueue admin styles/scripts for custom pages
 add_action('admin_enqueue_scripts', function ($hook) {
-    if (strpos($hook, 'wa-submissions') === false) {
+    $is_submissions = strpos($hook, 'wa-submissions') !== false;
+    $is_dashboard   = strpos($hook, 'wa-dashboard') !== false;
+    $is_settings    = strpos($hook, 'wa-chat-settings') !== false;
+    $is_detail      = ($hook === 'post.php' && isset($_GET['post']) && isset($_GET['action']) && $_GET['action'] === 'edit' && get_post_type((int) $_GET['post']) === 'wa_submission');
+
+    if (!$is_submissions && !$is_dashboard && !$is_settings && !$is_detail) {
         return;
     }
+
     wp_enqueue_style(
         'wa-admin-style',
         plugin_dir_url(WA_GREETING_CHAT_FILE) . 'admin/admin-style.css',
         [],
         WA_GREETING_CHAT_VERSION
     );
-    wp_enqueue_script(
-        'wa-admin-script',
-        plugin_dir_url(WA_GREETING_CHAT_FILE) . 'admin/admin-script.js',
-        [],
-        WA_GREETING_CHAT_VERSION,
-        true
-    );
+
+    if ($is_submissions) {
+        wp_enqueue_script(
+            'wa-admin-script',
+            plugin_dir_url(WA_GREETING_CHAT_FILE) . 'admin/admin-script.js',
+            [],
+            WA_GREETING_CHAT_VERSION,
+            true
+        );
+    }
+
+    if ($is_dashboard) {
+        wp_enqueue_script(
+            'chartjs',
+            'https://cdn.jsdelivr.net/npm/chart.js@4.4.7/dist/chart.umd.min.js',
+            [],
+            '4.4.7',
+            true
+        );
+        wp_enqueue_script(
+            'wa-dashboard-script',
+            plugin_dir_url(WA_GREETING_CHAT_FILE) . 'admin/dashboard.js',
+            ['chartjs'],
+            WA_GREETING_CHAT_VERSION,
+            true
+        );
+
+        // Dashboard data with transient cache (5 min TTL)
+        $dashboard_data = get_transient('wa_dashboard_data');
+        if ($dashboard_data === false) {
+            $dashboard_data = wa_build_dashboard_data();
+            set_transient('wa_dashboard_data', $dashboard_data, 5 * MINUTE_IN_SECONDS);
+        }
+
+        wp_localize_script('wa-dashboard-script', 'waDashboard', $dashboard_data);
+    }
 });
+
+// Build dashboard data (cached via transient)
+function wa_build_dashboard_data() {
+    global $wpdb;
+
+    // Single query for all summary counts (replaces 4 separate WP_Query calls)
+    $now = current_time('mysql');
+    $year = date('Y', strtotime($now));
+    $month = date('m', strtotime($now));
+    $day = date('d', strtotime($now));
+    $week_start = date('Y-m-d 00:00:00', strtotime('monday this week', strtotime($now)));
+
+    $summary = $wpdb->get_row($wpdb->prepare(
+        "SELECT
+            COUNT(*) AS total_all,
+            SUM(CASE WHEN YEAR(post_date) = %d AND MONTH(post_date) = %d THEN 1 ELSE 0 END) AS total_month,
+            SUM(CASE WHEN post_date >= %s THEN 1 ELSE 0 END) AS total_week,
+            SUM(CASE WHEN YEAR(post_date) = %d AND MONTH(post_date) = %d AND DAY(post_date) = %d THEN 1 ELSE 0 END) AS total_today
+         FROM {$wpdb->posts}
+         WHERE post_type = 'wa_submission' AND post_status = 'publish'",
+        $year, $month, $week_start, $year, $month, $day
+    ));
+
+    // Service group distribution
+    $service_groups = $wpdb->get_results(
+        "SELECT pm.meta_value AS label, COUNT(*) AS total
+         FROM {$wpdb->postmeta} pm
+         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+         WHERE pm.meta_key = 'service_group'
+           AND pm.meta_value != ''
+           AND p.post_type = 'wa_submission'
+           AND p.post_status = 'publish'
+         GROUP BY pm.meta_value
+         ORDER BY total DESC"
+    );
+
+    // Monthly trend (last 12 months)
+    $monthly_trend = $wpdb->get_results(
+        "SELECT YEAR(post_date) AS y, MONTH(post_date) AS m, COUNT(*) AS total
+         FROM {$wpdb->posts}
+         WHERE post_type = 'wa_submission'
+           AND post_status = 'publish'
+           AND post_date >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+         GROUP BY YEAR(post_date), MONTH(post_date)
+         ORDER BY y ASC, m ASC"
+    );
+
+    // Top 10 companies
+    $top_companies = $wpdb->get_results(
+        "SELECT pm.meta_value AS company, COUNT(*) AS total
+         FROM {$wpdb->postmeta} pm
+         INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+         WHERE pm.meta_key = 'company'
+           AND pm.meta_value != ''
+           AND p.post_type = 'wa_submission'
+           AND p.post_status = 'publish'
+         GROUP BY pm.meta_value
+         ORDER BY total DESC
+         LIMIT 10"
+    );
+
+    // Build monthly trend labels
+    $months_data = [];
+    for ($i = 11; $i >= 0; $i--) {
+        $date = strtotime("-{$i} months");
+        $key = date('Y-n', $date);
+        $months_data[$key] = ['label' => date('M Y', $date), 'total' => 0];
+    }
+    foreach ($monthly_trend as $row) {
+        $key = $row->y . '-' . $row->m;
+        if (isset($months_data[$key])) {
+            $months_data[$key]['total'] = (int) $row->total;
+        }
+    }
+
+    return [
+        'summary' => [
+            'total_all'   => (int) $summary->total_all,
+            'total_month' => (int) $summary->total_month,
+            'total_week'  => (int) $summary->total_week,
+            'total_today' => (int) $summary->total_today,
+        ],
+        'serviceGroups' => array_map(function ($row) {
+            return ['label' => $row->label, 'total' => (int) $row->total];
+        }, $service_groups),
+        'monthlyTrend' => [
+            'labels' => array_column(array_values($months_data), 'label'),
+            'data'   => array_column(array_values($months_data), 'total'),
+        ],
+        'topCompanies' => array_map(function ($row) {
+            return ['company' => $row->company, 'total' => (int) $row->total];
+        }, $top_companies),
+    ];
+}
+
+// Invalidate caches when data changes
+add_action('save_post_wa_submission', function () {
+    delete_transient('wa_dashboard_data');
+});
+add_action('delete_post', function ($post_id) {
+    if (get_post_type($post_id) === 'wa_submission') {
+        delete_transient('wa_dashboard_data');
+    }
+});
+add_action('created_wa_service', function () { delete_transient('wa_service_tree'); });
+add_action('edited_wa_service', function () { delete_transient('wa_service_tree'); });
+add_action('delete_wa_service', function () { delete_transient('wa_service_tree'); });
+
+// Render dashboard page
+function wa_render_dashboard_page() {
+    ?>
+    <div class="wrap wa-dashboard-wrap">
+        <h1 class="wp-heading-inline">Dashboard</h1>
+        <p class="description">Overview of WhatsApp chat submissions analytics.</p>
+
+        <div class="wa-summary-cards">
+            <div class="wa-card">
+                <span class="wa-card-icon dashicons dashicons-format-chat"></span>
+                <div class="wa-card-content">
+                    <h3 id="card-total-all">0</h3>
+                    <p>Total Submissions</p>
+                </div>
+            </div>
+            <div class="wa-card">
+                <span class="wa-card-icon dashicons dashicons-calendar-alt"></span>
+                <div class="wa-card-content">
+                    <h3 id="card-total-month">0</h3>
+                    <p>This Month</p>
+                </div>
+            </div>
+            <div class="wa-card">
+                <span class="wa-card-icon dashicons dashicons-clock"></span>
+                <div class="wa-card-content">
+                    <h3 id="card-total-week">0</h3>
+                    <p>This Week</p>
+                </div>
+            </div>
+            <div class="wa-card">
+                <span class="wa-card-icon dashicons dashicons-yes-alt"></span>
+                <div class="wa-card-content">
+                    <h3 id="card-total-today">0</h3>
+                    <p>Today</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="wa-charts-row">
+            <div class="wa-chart-box">
+                <h2>Service Group Distribution</h2>
+                <div class="wa-chart-container wa-chart-doughnut">
+                    <canvas id="wa-service-chart"></canvas>
+                </div>
+                <p class="wa-chart-empty" id="wa-service-empty" style="display:none;">No data available.</p>
+            </div>
+            <div class="wa-chart-box">
+                <h2>Monthly Submission Trend</h2>
+                <div class="wa-chart-container wa-chart-line">
+                    <canvas id="wa-monthly-chart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <div class="wa-top-companies-box">
+            <h2>Top 10 Companies</h2>
+            <table class="wp-list-table widefat fixed striped">
+                <thead>
+                    <tr>
+                        <th style="width:50px;">No</th>
+                        <th>Company</th>
+                        <th style="width:120px;">Submissions</th>
+                    </tr>
+                </thead>
+                <tbody id="wa-top-companies-body">
+                    <tr><td colspan="3">Loading...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+    <?php
+}
 
 // Render custom submissions page
 function wa_render_submissions_page() {
@@ -491,10 +779,16 @@ function wa_handle_excel_export() {
         $args['date_query'] = [$date_query];
     }
 
+    // Service group filter
+    $service_filter = isset($_GET['service_group_filter']) ? sanitize_text_field($_GET['service_group_filter']) : '';
+    if (!empty($service_filter)) {
+        $args['meta_query'][] = ['key' => 'service_group', 'value' => $service_filter, 'compare' => '='];
+    }
+
     // Search filter
     $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
     if (!empty($search)) {
-        $args['meta_query'] = [
+        $search_query = [
             'relation' => 'OR',
             ['key' => 'name',          'value' => $search, 'compare' => 'LIKE'],
             ['key' => 'email',         'value' => $search, 'compare' => 'LIKE'],
@@ -504,6 +798,12 @@ function wa_handle_excel_export() {
             ['key' => 'service_group', 'value' => $search, 'compare' => 'LIKE'],
             ['key' => 'plugin',        'value' => $search, 'compare' => 'LIKE'],
         ];
+        if (!empty($service_filter)) {
+            $args['meta_query']['relation'] = 'AND';
+            $args['meta_query'][] = $search_query;
+        } else {
+            $args['meta_query'] = $search_query;
+        }
     }
 
     $query = new WP_Query($args);
@@ -580,7 +880,11 @@ function wa_render_settings_page() {
     $blocked_domains = get_option('wa_blocked_email_domains', '');
 
     ?>
-    <div class="wrap">
+    <div class="wrap wa-settings-wrap">
+        <div class="wa-plugin-header">
+            <img src="<?= esc_url(plugin_dir_url(WA_GREETING_CHAT_FILE) . 'assets/logo.svg') ?>" alt="WA Greeting Chat" class="wa-plugin-logo">
+            <span class="wa-plugin-version">v<?= WA_GREETING_CHAT_VERSION ?></span>
+        </div>
         <h2>WA Chat Box Settings</h2>
         <form method="post">
             <table class="form-table">

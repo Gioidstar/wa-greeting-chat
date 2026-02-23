@@ -60,7 +60,11 @@ wa-greeting-chat/
 ├── README.md                      # Dokumentasi
 ├── admin/
 │   ├── admin-style.css            # Styling halaman admin
-│   └── admin-script.js            # JavaScript halaman admin
+│   ├── admin-script.js            # JavaScript halaman admin
+│   └── dashboard.js               # Chart.js dashboard charts
+├── assets/
+│   ├── logo.svg                   # Logo plugin (full, dengan teks)
+│   └── icon.svg                   # Icon plugin (tanpa teks)
 └── includes/
     ├── class-github-updater.php   # GitHub auto-updater
     └── class-submissions-table.php # Custom admin list table
@@ -119,25 +123,25 @@ Setiap kali ada update plugin:
 
    Edit `wa-greeting-chat.php`:
    ```php
-   * Version: 1.6
+   * Version: 1.7
    ```
    Dan:
    ```php
-   define('WA_GREETING_CHAT_VERSION', '1.6');
+   define('WA_GREETING_CHAT_VERSION', '1.7');
    ```
 
 2. **Commit dan Push**
    ```bash
    git add .
-   git commit -m "Release v1.6 - Deskripsi perubahan"
+   git commit -m "Release v1.7 - Deskripsi perubahan"
    git push
    ```
 
 3. **Buat Release di GitHub**
    - Buka repository di GitHub
    - Klik **Releases** > **Create a new release**
-   - Tag version: `v1.6` (harus sama dengan versi di plugin)
-   - Release title: `v1.6`
+   - Tag version: `v1.7` (harus sama dengan versi di plugin)
+   - Release title: `v1.7`
    - Description: Tulis changelog/perubahan
    - Klik **Publish release**
 
@@ -145,7 +149,7 @@ Setiap kali ada update plugin:
 
    Untuk performa lebih baik, buat file ZIP plugin:
    ```bash
-   zip -r wa-greeting-chat-v1.6.zip wa-greeting-chat/ -x "*.git*"
+   zip -r wa-greeting-chat-v1.7.zip wa-greeting-chat/ -x "*.git*"
    ```
    Upload ZIP ini sebagai asset di GitHub Release.
 
@@ -167,6 +171,19 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+
+### Version 1.7
+- **Dashboard Analytics** — Halaman dashboard baru dengan summary cards (total all, bulan ini, minggu ini, hari ini), doughnut chart distribusi per Service Group, line chart trend submission 12 bulan terakhir, dan tabel Top 10 Companies
+- **Chart.js Integration** — Visualisasi data menggunakan Chart.js v4.4.7 via CDN dengan animated counters
+- **Plugin Branding** — Logo SVG plugin ditampilkan di Settings page dengan badge versi, icon di halaman View Detail
+- **Performance Optimization** — Transient caching untuk dashboard data (5 menit) dan service tree frontend (1 jam), single SQL query untuk summary counts, cache invalidation otomatis saat data berubah
+- **Service Group Filter** — Dropdown filter Service Group di halaman All Submissions, terintegrasi dengan search dan CSV export
+- **Dashboard sebagai Default Page** — Klik menu WA Submissions langsung mengarah ke Dashboard
+- **Submenu Reorder** — Urutan submenu: Dashboard, Services, All Submissions, Settings
+- **Enhanced Detail View** — Textarea untuk pesan, mailto link untuk email, URL halaman yang clickable
+- **Version Cache Busting** — Frontend CSS/JS menggunakan version tag untuk cache busting
+- Penghapusan `error_log()` dari submission handler
+- add code country code  field WA phone number
 
 ### Version 1.6
 - Custom admin submissions table (menggantikan default WordPress list table)

@@ -72,10 +72,16 @@ class WA_Submissions_List_Table extends WP_List_Table {
             $args['date_query'] = [$date_query];
         }
 
+        // Service group filter
+        $service_filter = isset($_GET['service_group_filter']) ? sanitize_text_field($_GET['service_group_filter']) : '';
+        if (!empty($service_filter)) {
+            $args['meta_query'][] = ['key' => 'service_group', 'value' => $service_filter, 'compare' => '='];
+        }
+
         // Search across meta fields
         $search = isset($_GET['s']) ? sanitize_text_field($_GET['s']) : '';
         if (!empty($search)) {
-            $args['meta_query'] = [
+            $search_query = [
                 'relation' => 'OR',
                 ['key' => 'name',          'value' => $search, 'compare' => 'LIKE'],
                 ['key' => 'email',         'value' => $search, 'compare' => 'LIKE'],
@@ -85,6 +91,12 @@ class WA_Submissions_List_Table extends WP_List_Table {
                 ['key' => 'service_group', 'value' => $search, 'compare' => 'LIKE'],
                 ['key' => 'plugin',        'value' => $search, 'compare' => 'LIKE'],
             ];
+            if (!empty($service_filter)) {
+                $args['meta_query']['relation'] = 'AND';
+                $args['meta_query'][] = $search_query;
+            } else {
+                $args['meta_query'] = $search_query;
+            }
         }
 
         // Sorting
@@ -164,26 +176,47 @@ class WA_Submissions_List_Table extends WP_List_Table {
         if ($which !== 'top') {
             return;
         }
-        $date_from = isset($_GET['date_from']) ? esc_attr($_GET['date_from']) : '';
-        $date_to   = isset($_GET['date_to'])   ? esc_attr($_GET['date_to'])   : '';
-        $search    = isset($_GET['s'])          ? esc_attr($_GET['s'])         : '';
+        $date_from      = isset($_GET['date_from']) ? esc_attr($_GET['date_from']) : '';
+        $date_to        = isset($_GET['date_to'])   ? esc_attr($_GET['date_to'])   : '';
+        $search         = isset($_GET['s'])          ? esc_attr($_GET['s'])         : '';
+        $service_filter = isset($_GET['service_group_filter']) ? sanitize_text_field($_GET['service_group_filter']) : '';
+
+        // Get unique service groups for dropdown
+        global $wpdb;
+        $service_groups = $wpdb->get_col(
+            "SELECT DISTINCT pm.meta_value
+             FROM {$wpdb->postmeta} pm
+             INNER JOIN {$wpdb->posts} p ON p.ID = pm.post_id
+             WHERE pm.meta_key = 'service_group'
+               AND pm.meta_value != ''
+               AND p.post_type = 'wa_submission'
+               AND p.post_status = 'publish'
+             ORDER BY pm.meta_value ASC"
+        );
         ?>
         <div class="alignleft actions wa-date-filters">
+            <select name="service_group_filter" id="service_group_filter">
+                <option value="">All Services</option>
+                <?php foreach ($service_groups as $group) : ?>
+                    <option value="<?= esc_attr($group) ?>" <?php selected($service_filter, $group); ?>><?= esc_html($group) ?></option>
+                <?php endforeach; ?>
+            </select>
             <label for="date_from">From:</label>
             <input type="date" id="date_from" name="date_from" value="<?= $date_from ?>" />
             <label for="date_to">To:</label>
             <input type="date" id="date_to" name="date_to" value="<?= $date_to ?>" />
             <?php submit_button('Filter', 'secondary', 'filter_action', false); ?>
-            <?php if ($date_from || $date_to) : ?>
+            <?php if ($date_from || $date_to || $service_filter) : ?>
                 <a href="<?= esc_url(admin_url('edit.php?post_type=wa_submission&page=wa-submissions')) ?>" class="button">Clear</a>
             <?php endif; ?>
         </div>
         <div class="alignleft actions">
             <a href="<?= esc_url(add_query_arg([
-                'action'    => 'wa_export_excel',
-                'date_from' => $date_from,
-                'date_to'   => $date_to,
-                's'         => $search,
+                'action'               => 'wa_export_excel',
+                'date_from'            => $date_from,
+                'date_to'              => $date_to,
+                's'                    => $search,
+                'service_group_filter' => $service_filter,
             ], admin_url('admin-post.php'))) ?>" class="button button-primary">
                 <span class="dashicons dashicons-download" style="vertical-align:middle;margin-right:4px;font-size:16px;line-height:1.4;"></span>
                 Export CSV

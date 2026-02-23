@@ -210,3 +210,121 @@
 @keyframes spin {
   to { transform: rotate(360deg); }
 }
+
+/* Country Code Phone Input */
+.wa-phone-wrap {
+  display: flex;
+  gap: 0;
+  align-items: stretch;
+}
+
+.wa-phone-wrap input#wa-number {
+  flex: 1;
+  border-radius: 0 5px 5px 0;
+  border-left: none;
+  min-width: 0;
+}
+
+.wa-country-select {
+  position: relative;
+  flex-shrink: 0;
+}
+
+.wa-country-selected {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  padding: 7px 8px;
+  border: 1px solid #ccc;
+  border-radius: 5px 0 0 5px;
+  cursor: pointer;
+  background: #f9f9f9;
+  height: 100%;
+  box-sizing: border-box;
+  font-size: 16px;
+}
+
+.wa-country-selected:hover {
+  background: #f0f0f0;
+}
+
+.wa-country-flag {
+  font-size: 18px;
+  line-height: 1;
+}
+
+.wa-country-arrow {
+  font-size: 10px;
+  color: #666;
+}
+
+.wa-country-dropdown {
+  display: none;
+  position: absolute;
+  top: 100%;
+  left: 0;
+  width: 240px;
+  max-height: 250px;
+  background: #fff;
+  border: 1px solid #ccc;
+  border-radius: 5px;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  z-index: 10000;
+  margin-top: 2px;
+  overflow: hidden;
+}
+
+.wa-country-dropdown.open {
+  display: block;
+}
+
+.wa-country-search {
+  width: 100% !important;
+  padding: 8px 10px !important;
+  border: none !important;
+  border-bottom: 1px solid #eee !important;
+  border-radius: 0 !important;
+  font-size: 13px !important;
+  outline: none;
+  box-sizing: border-box;
+}
+
+.wa-country-list {
+  list-style: none;
+  margin: 0;
+  padding: 0;
+  max-height: 200px;
+  overflow-y: auto;
+}
+
+.wa-country-list li {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 10px;
+  cursor: pointer;
+  font-size: 13px;
+  transition: background 0.15s;
+}
+
+.wa-country-list li:hover {
+  background: #f0f6fc;
+}
+
+.wa-country-list li .cc-flag {
+  font-size: 18px;
+  flex-shrink: 0;
+}
+
+.wa-country-list li .cc-name {
+  flex: 1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.wa-country-list li .cc-dial {
+  color: #888;
+  font-size: 12px;
+  flex-shrink: 0;
+}
