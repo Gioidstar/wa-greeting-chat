@@ -172,6 +172,10 @@ Setiap kali ada update plugin:
 
 ## Changelog
 
+
+### Version 1.8
+- **Fixing Bug** — Fixing direct form to Message to Whatsapp
+
 ### Version 1.7
 - **Dashboard Analytics** — Halaman dashboard baru dengan summary cards (total all, bulan ini, minggu ini, hari ini), doughnut chart distribusi per Service Group, line chart trend submission 12 bulan terakhir, dan tabel Top 10 Companies
 - **Chart.js Integration** — Visualisasi data menggunakan Chart.js v4.4.7 via CDN dengan animated counters

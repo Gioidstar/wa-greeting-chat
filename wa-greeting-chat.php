@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.7
+ * Version: 1.8
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -48,12 +48,6 @@ add_action('wp_enqueue_scripts', function () {
     if (is_admin()) return;
     wp_enqueue_style('wa-greeting-chat-style', plugin_dir_url(__FILE__) . 'style.css', [], WA_GREETING_CHAT_VERSION);
     wp_enqueue_script('wa-greeting-chat-script', plugin_dir_url(__FILE__) . 'script.js', [], WA_GREETING_CHAT_VERSION, true);
-    $blocked_domains_raw = get_option('wa_blocked_email_domains', '');
-    $blocked_domains = [];
-    if (!empty($blocked_domains_raw)) {
-        $blocked_domains = array_map('trim', explode(',', strtolower($blocked_domains_raw)));
-        $blocked_domains = array_values(array_filter($blocked_domains));
-    }
     // Build service group tree (cached)
     $service_tree = get_transient('wa_service_tree');
     if ($service_tree === false) {
@@ -87,8 +81,7 @@ add_action('wp_enqueue_scripts', function () {
 
     wp_localize_script('wa-greeting-chat-script', 'waGreeting', [
         'ajax_url' => admin_url('admin-ajax.php'),
-        'admin_wa' => get_option('wa_admin_number', ''),
-        'blocked_domains' => $blocked_domains,
+        'nonce' => wp_create_nonce('wa_greeting_nonce'),
         'service_tree' => $service_tree,
     ]);
 });
@@ -181,11 +174,25 @@ add_action('wp_footer', function () {
 <?php
 });
 
+// AJAX endpoint to get fresh nonce (not affected by page cache)
+add_action('wp_ajax_wa_greeting_nonce', 'wa_greeting_get_nonce');
+add_action('wp_ajax_nopriv_wa_greeting_nonce', 'wa_greeting_get_nonce');
+
+function wa_greeting_get_nonce() {
+    wp_send_json_success(['nonce' => wp_create_nonce('wa_greeting_nonce')]);
+}
+
 // Save submission to custom post type
 add_action('wp_ajax_wa_greeting_save', 'wa_greeting_save_submission');
 add_action('wp_ajax_nopriv_wa_greeting_save', 'wa_greeting_save_submission');
 
 function wa_greeting_save_submission() {
+    // Verify nonce
+    if (!isset($_POST['nonce']) || !wp_verify_nonce($_POST['nonce'], 'wa_greeting_nonce')) {
+        wp_send_json_error(['message' => 'Invalid request.']);
+        return;
+    }
+
     // Check if all necessary fields are set
     if (empty($_POST['name']) || empty($_POST['email']) || empty($_POST['number']) || empty($_POST['plugin'])) {
         wp_send_json_error(['message' => 'Required fields are missing']);
@@ -249,7 +256,10 @@ function wa_greeting_save_submission() {
     // Send email notification to admin
     send_admin_notification_email($data, $post_id);
 
-    wp_send_json_success(['id' => $post_id]);
+    wp_send_json_success([
+        'id' => $post_id,
+        'admin_wa' => get_option('wa_admin_number', ''),
+    ]);
 }
 
 /**
@@ -901,7 +911,7 @@ function wa_render_settings_page() {
                 <tr>
                     <th><label for="wa_admin_number">Admin WhatsApp Number</label></th>
                     <td><input type="text" name="wa_admin_number" id="wa_admin_number" value="<?= esc_attr($number) ?>" class="regular-text">
-                        <p class="description">Tanpa +62 / 0. Contoh: 81234567890</p>
+                        <p class="description">Contoh: +6281234567890</p>
                     </td>
                 </tr>
                 <tr>

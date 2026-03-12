@@ -258,10 +258,6 @@ function validateForm() {
   } else if (!isValidEmail(email)) {
     document.getElementById('error-email').textContent = 'Please enter a valid email';
     isValid = false;
-  } else if (isBlockedEmailDomain(email)) {
-    const domain = email.split('@')[1].toLowerCase();
-    document.getElementById('error-email').textContent = 'Email domain @' + domain + ' is not allowed. Please use a business email.';
-    isValid = false;
   }
 
   // Company validation
@@ -322,15 +318,6 @@ function isValidEmail(email) {
   return re.test(email);
 }
 
-// Check if email domain is blocked
-function isBlockedEmailDomain(email) {
-  if (!waGreeting.blocked_domains || waGreeting.blocked_domains.length === 0) {
-    return false;
-  }
-  const domain = email.split('@')[1].toLowerCase();
-  return waGreeting.blocked_domains.includes(domain);
-}
-
 // Send WhatsApp message and save data
 function sendWhatsapp() {
   clearErrors();
@@ -358,22 +345,37 @@ function sendWhatsapp() {
   submitButton.classList.add('loading');
   submitButton.disabled = true;
 
-  // Save form data to WordPress
-  const formData = new FormData();
-  formData.append('action', 'wa_greeting_save');
-  formData.append('name', name);
-  formData.append('email', email);
-  formData.append('company', company);
-  formData.append('service_group', serviceGroup);
-  formData.append('plugin', plugin);
-  formData.append('number', number);
-  formData.append('message', message);
-  formData.append('url', window.location.href);
+  // Fetch fresh nonce (page cache may serve stale nonce), then submit
+  const nonceForm = new FormData();
+  nonceForm.append('action', 'wa_greeting_nonce');
 
   fetch(waGreeting.ajax_url, {
     method: 'POST',
-    body: formData,
+    body: nonceForm,
     credentials: 'same-origin'
+  })
+  .then(r => r.json())
+  .then(nonceData => {
+    const freshNonce = nonceData.data.nonce;
+
+    // Save form data to WordPress
+    const formData = new FormData();
+    formData.append('action', 'wa_greeting_save');
+    formData.append('nonce', freshNonce);
+    formData.append('name', name);
+    formData.append('email', email);
+    formData.append('company', company);
+    formData.append('service_group', serviceGroup);
+    formData.append('plugin', plugin);
+    formData.append('number', number);
+    formData.append('message', message);
+    formData.append('url', window.location.href);
+
+    return fetch(waGreeting.ajax_url, {
+      method: 'POST',
+      body: formData,
+      credentials: 'same-origin'
+    });
   })
   .then(response => response.json())
   .then(data => {
@@ -386,7 +388,7 @@ function sendWhatsapp() {
       // Open WhatsApp with pre-filled message
       const serviceLine = serviceWrapperVisible ? `${serviceGroup} - ${plugin}` : serviceGroup;
       const waMessage = `Hello! My name is ${name} from ${company}. I'm interested in ${serviceLine} service. ${message}`;
-      const waUrl = `https://wa.me/${waGreeting.admin_wa}?text=${encodeURIComponent(waMessage)}`;
+      const waUrl = `https://wa.me/${data.data.admin_wa}?text=${encodeURIComponent(waMessage)}`;
       window.open(waUrl, '_blank');
 
       // Reset form
