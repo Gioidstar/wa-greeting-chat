@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.8
+ * Version: 1.9
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WA_GREETING_CHAT_VERSION', '1.7');
+define('WA_GREETING_CHAT_VERSION', '1.9');
 define('WA_GREETING_CHAT_FILE', __FILE__);
 define('WA_GREETING_CHAT_PATH', plugin_dir_path(__FILE__));
 
@@ -94,8 +94,9 @@ add_action('wp_footer', function () {
 ?>
 <div id="wa-widget">
   <button onclick="toggleChat()">
-  <svg viewBox="0 0 32 32" width="30" height="30" fill="white" xmlns="http://www.w3.org/2000/svg">
-      <path d="M16 .6C7.6.6.6 7.6.6 16c0 2.8.7 5.4 2 7.8L.3 31.4l7.8-2C11 30.7 13.5 31.4 16 31.4c8.4 0 15.4-7 15.4-15.4S24.4.6 16 .6zm0 28.2c-2.3 0-4.5-.6-6.5-1.7l-.5-.3-4.6 1.2 1.2-4.5-.3-.5C4.6 20.5 4 18.3 4 16 4 8.8 9.8 3 17 3s13 5.8 13 13-5.8 13-13 13zm7.1-9.7c-.4-.2-2.5-1.2-2.9-1.3-.4-.1-.7-.2-1 .2-.3.4-1.2 1.3-1.4 1.5-.2.2-.5.3-.9.1-.4-.2-1.7-.6-3.2-2-1.2-1.2-2-2.7-2.2-3.1-.2-.4 0-.6.2-.8.2-.2.4-.5.6-.8.2-.3.3-.5.5-.8.2-.3.1-.5 0-.7-.1-.2-1-2.4-1.4-3.3-.4-.9-.7-.7-.9-.7-.2 0-.5 0-.8 0s-.7.1-1 .5c-.3.4-1.3 1.2-1.3 3 0 1.8 1.3 3.5 1.5 3.7.2.2 2.6 4 6.3 5.6.9.4 1.6.7 2.1.9.9.3 1.7.2 2.3.1.7-.1 2.5-1 2.8-1.9.4-1 .4-1.9.3-2z"/>
+  <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
+      <path d="M24 4C12.95 4 4 12.95 4 24c0 3.54.93 6.86 2.55 9.74L4 44l10.53-2.47A19.87 19.87 0 0 0 24 44c11.05 0 20-8.95 20-20S35.05 4 24 4z" fill="#25D366" stroke="white" stroke-width="8" paint-order="stroke"/>
+      <path d="M17.47 14.38c-.36-.8-.74-.82-1.08-.83l-.92-.01c-.32 0-.84.12-1.28.6s-1.68 1.64-1.68 4c0 2.36 1.72 4.64 1.96 4.96s3.32 5.32 8.2 7.24c4.06 1.6 4.88 1.28 5.76 1.2s2.84-1.16 3.24-2.28.4-2.08.28-2.28-.44-.32-.92-.56-2.84-1.4-3.28-1.56-.76-.24-1.08.24-1.24 1.56-1.52 1.88-.56.36-1.04.12-2.03-.75-3.86-2.38c-1.43-1.27-2.39-2.84-2.67-3.32s-.03-.74.21-.98c.22-.21.48-.56.72-.84s.32-.48.48-.8.08-.6-.04-.84-.98-2.58-1.39-3.54" fill="#fff" fill-rule="evenodd"/>
     </svg>
   </button>
 </div>

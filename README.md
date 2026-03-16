@@ -172,6 +172,8 @@ Setiap kali ada update plugin:
 
 ## Changelog
 
+### Version 1.9
+- **Change Logo** — Change logo Floating whatsapp tobe logo offical Whatsapp
 
 ### Version 1.8
 - **Fixing Bug** — Fixing direct form to Message to Whatsapp
