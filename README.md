@@ -171,6 +171,8 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+### Version 1.10
+- **Change Logo** — Change logo Floating whatsapp Modern
 
 ### Version 1.9
 - **Change Logo** — Change logo Floating whatsapp tobe logo offical Whatsapp

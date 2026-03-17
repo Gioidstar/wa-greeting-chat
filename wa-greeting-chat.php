@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.9
+ * Version: 1.10
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WA_GREETING_CHAT_VERSION', '1.9');
+define('WA_GREETING_CHAT_VERSION', '1.10');
 define('WA_GREETING_CHAT_FILE', __FILE__);
 define('WA_GREETING_CHAT_PATH', plugin_dir_path(__FILE__));
 
@@ -94,10 +94,22 @@ add_action('wp_footer', function () {
 ?>
 <div id="wa-widget">
   <button onclick="toggleChat()">
-  <svg viewBox="0 0 48 48" width="100" height="100" xmlns="http://www.w3.org/2000/svg">
-      <path d="M24 4C12.95 4 4 12.95 4 24c0 3.54.93 6.86 2.55 9.74L4 44l10.53-2.47A19.87 19.87 0 0 0 24 44c11.05 0 20-8.95 20-20S35.05 4 24 4z" fill="#25D366" stroke="white" stroke-width="8" paint-order="stroke"/>
-      <path d="M17.47 14.38c-.36-.8-.74-.82-1.08-.83l-.92-.01c-.32 0-.84.12-1.28.6s-1.68 1.64-1.68 4c0 2.36 1.72 4.64 1.96 4.96s3.32 5.32 8.2 7.24c4.06 1.6 4.88 1.28 5.76 1.2s2.84-1.16 3.24-2.28.4-2.08.28-2.28-.44-.32-.92-.56-2.84-1.4-3.28-1.56-.76-.24-1.08.24-1.24 1.56-1.52 1.88-.56.36-1.04.12-2.03-.75-3.86-2.38c-1.43-1.27-2.39-2.84-2.67-3.32s-.03-.74.21-.98c.22-.21.48-.56.72-.84s.32-.48.48-.8.08-.6-.04-.84-.98-2.58-1.39-3.54" fill="#fff" fill-rule="evenodd"/>
-    </svg>
+  <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 112.5" width="100" height="113">
+    <g id="Layer 1">
+        <path 
+            d="m50 14.33c-23.02 0-41.67 18.65-41.67 41.67 0 7.37 1.94 14.29 5.32 20.29l-5.32 21.38 21.94-5.15q2.26 1.25 4.65 2.2 2.4 0.96 4.89 1.61 2.5 0.65 5.06 0.98 2.55 0.34 5.13 0.36c23.02 0 41.67-18.65 41.67-41.67 0-23.02-18.65-41.67-41.67-41.67z"
+            fill="#25d366"
+            stroke="#ffffff"
+            stroke-width="8"
+        />
+        
+        <path 
+            fill-rule="evenodd"
+            d="m40.56 39.13c-0.75-1.67-1.54-1.71-2.25-1.73l-1.91-0.03c-0.67 0-1.75 0.25-2.67 1.26-0.92 1-3.5 3.41-3.5 8.33 0 4.91 3.58 9.67 4.08 10.33 0.5 0.67 6.92 11.08 17.09 15.09 8.45 3.33 10.16 2.66 12 2.5 1.83-0.17 5.91-2.42 6.75-4.75 0.83-2.34 0.83-4.34 0.58-4.75-0.25-0.42-0.92-0.67-1.92-1.17-1-0.5-5.91-2.92-6.83-3.25-0.92-0.33-1.58-0.5-2.25 0.5-0.67 1-2.58 3.25-3.17 3.92-0.58 0.66-1.16 0.75-2.16 0.25-1-0.5-4.23-1.57-8.05-4.96-2.97-2.65-4.97-5.92-5.56-6.92-0.58-1-0.06-1.54 0.44-2.04 0.46-0.44 1-1.17 1.5-1.75 0.5-0.58 0.67-1  1-1.67 0.33-0.66 0.17-1.25-0.08-1.75-0.25-0.5-2.05-5.37-2.9-7.37"
+            fill="#ffffff"
+        />
+    </g>
+</svg>
   </button>
 </div>
 
