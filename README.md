@@ -55,6 +55,8 @@ Setelah aktivasi, buka **WA Submissions > Settings** di admin panel:
 ```
 wa-greeting-chat/
 ├── wa-greeting-chat.php           # File utama plugin
+├── composer.json                  # Composer dependencies
+├── google-sheet-api.php           # Google Sheets API integration
 ├── script.js                      # JavaScript untuk interaksi form
 ├── style.css                      # Styling widget dan form
 ├── README.md                      # Dokumentasi
@@ -67,6 +69,7 @@ wa-greeting-chat/
 │   └── icon.svg                   # Icon plugin (tanpa teks)
 └── includes/
     ├── class-github-updater.php   # GitHub auto-updater
+    ├── class-google-sheets.php   # Spreadsheets authorization
     └── class-submissions-table.php # Custom admin list table
 ```
 
@@ -171,6 +174,10 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+### Version 1.11
+- **Release 1.11** — Integrating with Google Sheets API for data storage and adding sanitazion rules.
+
+
 ### Version 1.10
 - **Change Logo** — Change logo Floating whatsapp Modern
 

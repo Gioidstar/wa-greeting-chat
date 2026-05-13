@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.10
+ * Version: 1.11
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -16,9 +16,15 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WA_GREETING_CHAT_VERSION', '1.10');
+define('WA_GREETING_CHAT_VERSION', '1.11');
 define('WA_GREETING_CHAT_FILE', __FILE__);
 define('WA_GREETING_CHAT_PATH', plugin_dir_path(__FILE__));
+
+// Load Composer autoloader
+if (file_exists(WA_GREETING_CHAT_PATH . 'vendor/autoload.php')) {
+    require_once WA_GREETING_CHAT_PATH . 'vendor/autoload.php';
+}
+
 
 // =============================================================================
 // GITHUB AUTO-UPDATER CONFIGURATION
@@ -31,6 +37,7 @@ define('WA_GREETING_CHAT_GITHUB_REPO', 'wa-greeting-chat');   // Ganti dengan na
 add_action('init', function() {
     if (is_admin()) {
         require_once WA_GREETING_CHAT_PATH . 'includes/class-github-updater.php';
+        require_once WA_GREETING_CHAT_PATH . 'includes/class-google-sheets.php';
 
         $updater = new WA_Greeting_Chat_GitHub_Updater(WA_GREETING_CHAT_FILE);
         $updater->set_repository(
@@ -212,6 +219,12 @@ function wa_greeting_save_submission() {
         return;
     }
 
+    // Additional validation for hyphen-only values
+    if (trim($_POST['name']) === '-' || trim($_POST['company']) === '-') {
+        wp_send_json_error(['message' => 'Please enter a valid Name and Company name.']);
+        return;
+    }
+
     // Check if email domain is blocked
     $email = sanitize_email($_POST['email']);
     $email_domain = strtolower(substr(strrchr($email, '@'), 1));
@@ -231,7 +244,7 @@ function wa_greeting_save_submission() {
         'company'       => sanitize_text_field($_POST['company']),
         'service_group' => isset($_POST['service_group']) ? sanitize_text_field($_POST['service_group']) : '',
         'plugin'        => sanitize_text_field($_POST['plugin']),
-        'number'        => sanitize_text_field($_POST['number']),
+        'number'        => ltrim(sanitize_text_field($_POST['number']), '0'),
         'message'       => sanitize_textarea_field($_POST['message']),
         'url'           => isset($_POST['url']) ? esc_url_raw($_POST['url']) : '',
     ];
@@ -268,6 +281,13 @@ function wa_greeting_save_submission() {
 
     // Send email notification to admin
     send_admin_notification_email($data, $post_id);
+
+    // Save to Google Sheets if enabled
+    require_once WA_GREETING_CHAT_PATH . 'includes/class-google-sheets.php';
+    $gsheets = new WA_Greeting_Chat_Google_Sheets();
+    if ($gsheets->is_enabled()) {
+        $gsheets->append_data($data);
+    }
 
     wp_send_json_success([
         'id' => $post_id,
@@ -888,6 +908,26 @@ function wa_render_settings_page() {
         $blocked_domains = sanitize_textarea_field($_POST['wa_blocked_email_domains']);
         update_option('wa_blocked_email_domains', $blocked_domains);
 
+        // Handle Google Sheets settings
+        update_option('wa_gsheets_enabled', isset($_POST['wa_gsheets_enabled']) ? 'yes' : 'no');
+        update_option('wa_gsheets_spreadsheet_id', sanitize_text_field($_POST['wa_gsheets_spreadsheet_id']));
+        update_option('wa_gsheets_sheet_name', sanitize_text_field($_POST['wa_gsheets_sheet_name']));
+        update_option('wa_gsheets_credentials', wp_unslash($_POST['wa_gsheets_credentials'])); // Preserves backslashes in JSON
+
+        // Handle column mapping
+        $mapping = [
+            'date'          => intval($_POST['wa_gs_map_date']),
+            'name'          => intval($_POST['wa_gs_map_name']),
+            'email'         => intval($_POST['wa_gs_map_email']),
+            'company'       => intval($_POST['wa_gs_map_company']),
+            'service_group' => intval($_POST['wa_gs_map_service_group']),
+            'service'       => intval($_POST['wa_gs_map_service']),
+            'number'        => intval($_POST['wa_gs_map_number']),
+            'message'       => intval($_POST['wa_gs_map_message']),
+            'url'           => intval($_POST['wa_gs_map_url']),
+        ];
+        update_option('wa_gsheets_mapping', $mapping);
+
         echo '<div class="updated"><p>Settings saved.</p></div>';
     }
 
@@ -901,6 +941,22 @@ function wa_render_settings_page() {
 
     $privacy_policy_url = get_option('wa_privacy_policy_url', '#');
     $blocked_domains = get_option('wa_blocked_email_domains', '');
+
+    $gsheets_enabled = get_option('wa_gsheets_enabled', 'no');
+    $gsheets_spreadsheet_id = get_option('wa_gsheets_spreadsheet_id', '');
+    $gsheets_sheet_name = get_option('wa_gsheets_sheet_name', 'Sheet1');
+    $gsheets_credentials = get_option('wa_gsheets_credentials', '');
+    $gsheets_mapping = get_option('wa_gsheets_mapping', [
+        'date'          => 1,
+        'name'          => 2,
+        'email'         => 3,
+        'company'       => 4,
+        'service_group' => 5,
+        'service'       => 6,
+        'number'        => 7,
+        'message'       => 8,
+        'url'           => 9,
+    ]);
 
     ?>
     <div class="wrap wa-settings-wrap">
@@ -947,6 +1003,54 @@ function wa_render_settings_page() {
                         <textarea name="wa_blocked_email_domains" id="wa_blocked_email_domains" rows="4" class="large-text code"><?= esc_textarea($blocked_domains) ?></textarea>
                         <p class="description">Domain email yang diblokir dari pengiriman form. Pisahkan dengan koma.</p>
                         <p class="description">Contoh: gmail.com, yahoo.com, hotmail.com</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th colspan="2"><h3>Google Sheets Integration</h3></th>
+                </tr>
+                <tr>
+                    <th><label for="wa_gsheets_enabled">Enable Google Sheets</label></th>
+                    <td>
+                        <input type="checkbox" name="wa_gsheets_enabled" id="wa_gsheets_enabled" value="yes" <?= checked($gsheets_enabled, 'yes') ?>>
+                        <p class="description">Simpan setiap submission ke Google Spreadsheet.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="wa_gsheets_spreadsheet_id">Spreadsheet ID</label></th>
+                    <td>
+                        <input type="text" name="wa_gsheets_spreadsheet_id" id="wa_gsheets_spreadsheet_id" value="<?= esc_attr($gsheets_spreadsheet_id) ?>" class="regular-text">
+                        <p class="description">ID Spreadsheet bisa ditemukan di URL: https://docs.google.com/spreadsheets/d/<b>SPREADSHEET_ID</b>/edit</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="wa_gsheets_sheet_name">Sheet Name</label></th>
+                    <td>
+                        <input type="text" name="wa_gsheets_sheet_name" id="wa_gsheets_sheet_name" value="<?= esc_attr($gsheets_sheet_name) ?>" class="regular-text">
+                        <p class="description">Nama sheet (tab), contoh: Sheet1</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="wa_gsheets_credentials">Google API JSON Credentials</label></th>
+                    <td>
+                        <textarea name="wa_gsheets_credentials" id="wa_gsheets_credentials" rows="8" class="large-text code"><?= esc_textarea($gsheets_credentials) ?></textarea>
+                        <p class="description">Paste seluruh isi file .json credentials Anda di sini.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Column Mapping</th>
+                    <td>
+                        <p class="description">Tentukan urutan kolom di Google Sheets (1 = Kolom A, 2 = Kolom B, dst.). Isi 0 untuk tidak mengirim kolom tersebut.</p>
+                        <table class="wa-mapping-table">
+                            <tr><td>Date</td><td><input type="number" name="wa_gs_map_date" value="<?= $gsheets_mapping['date'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Name</td><td><input type="number" name="wa_gs_map_name" value="<?= $gsheets_mapping['name'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Email</td><td><input type="number" name="wa_gs_map_email" value="<?= $gsheets_mapping['email'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Company</td><td><input type="number" name="wa_gs_map_company" value="<?= $gsheets_mapping['company'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Service Group</td><td><input type="number" name="wa_gs_map_service_group" value="<?= $gsheets_mapping['service_group'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Service</td><td><input type="number" name="wa_gs_map_service" value="<?= $gsheets_mapping['service'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Phone Number</td><td><input type="number" name="wa_gs_map_number" value="<?= $gsheets_mapping['number'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Message</td><td><input type="number" name="wa_gs_map_message" value="<?= $gsheets_mapping['message'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Page URL</td><td><input type="number" name="wa_gs_map_url" value="<?= $gsheets_mapping['url'] ?>" min="0" style="width:60px"></td></tr>
+                        </table>
                     </td>
                 </tr>
             </table>
