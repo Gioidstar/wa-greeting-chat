@@ -1,0 +1,17 @@
+{
+    "name": "gioidstar/wa-greeting-chat",
+    "description": "WhatsApp Greeting Chat Plugin",
+    "type": "wordpress-plugin",
+    "require": {
+        "firebase/php-jwt": "^6.0"
+    },
+    "authors": [
+        {
+            "name": "Gio fandi Idstar",
+            "email": "gio@example.com"
+        }
+    ],
+    "config": {
+        "optimize-autoloader": true
+    }
+}

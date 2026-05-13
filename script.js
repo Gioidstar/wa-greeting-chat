@@ -244,9 +244,12 @@ function validateForm() {
   let isValid = true;
 
   // Name validation
-  const name = document.getElementById('wa-name').value;
+  const name = document.getElementById('wa-name').value.trim();
   if (!name) {
     document.getElementById('error-name').textContent = 'Name is required';
+    isValid = false;
+  } else if (name === '-') {
+    document.getElementById('error-name').textContent = 'Please enter a valid name';
     isValid = false;
   }
 
@@ -261,9 +264,12 @@ function validateForm() {
   }
 
   // Company validation
-  const company = document.getElementById('wa-company').value;
+  const company = document.getElementById('wa-company').value.trim();
   if (!company) {
     document.getElementById('error-company').textContent = 'Company is required';
+    isValid = false;
+  } else if (company === '-') {
+    document.getElementById('error-company').textContent = 'Please enter a valid company name';
     isValid = false;
   }
 
@@ -335,7 +341,11 @@ function sendWhatsapp() {
   const serviceWrapperVisible = document.getElementById('wa-service-wrapper').style.display !== 'none';
   const plugin = serviceWrapperVisible ? document.getElementById('wa-plugin').value : serviceGroup;
   const countryCode = document.getElementById('wa-country-code').value;
-  const rawNumber = document.getElementById('wa-number').value;
+  let rawNumber = document.getElementById('wa-number').value.trim();
+  
+  // Rule: Hapus semua angka 0 di depan nomor HP (contoh: 0812 -> 812)
+  rawNumber = rawNumber.replace(/^0+/, '');
+  
   const number = countryCode + rawNumber;
   const message = document.getElementById('wa-message').value;
 

@@ -171,6 +171,9 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+### Version 1.11
+- **Release 1.11** — Triggering update notification in WordPress dashboard.
+
 ### Version 1.10
 - **Change Logo** — Change logo Floating whatsapp Modern
 
