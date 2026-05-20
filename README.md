@@ -174,6 +174,13 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+### Version 1.12
+- **New Column: Year & Status Mappings** — Added support for sending the current Year only and a custom status indicator (`NEW`).
+- **New Column: WA Source Classification** — Automatically classifies and logs the page source where the chat was initiated 
+- **New Column: UTM Tracking** — Automatically extracts, formats, and logs Google Analytics UTM tracking parameters 
+- **Empty Check Refinement** — Restricts empty row checking specifically to the active/mapped column range (`$min_pos` to `$max_pos`), ignoring columns outside the range.
+- **Non-Destructive Write** — Performs targeted HTTP `PUT` updates starting exactly at the first active column (`$min_pos`), ensuring manually entered data in unmapped columns is preserved.
+
 ### Version 1.11
 - **Release 1.11** — Integrating with Google Sheets API for data storage and adding sanitazion rules.
 

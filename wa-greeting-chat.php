@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.11
+ * Version: 1.12
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WA_GREETING_CHAT_VERSION', '1.11');
+define('WA_GREETING_CHAT_VERSION', '1.12');
 define('WA_GREETING_CHAT_FILE', __FILE__);
 define('WA_GREETING_CHAT_PATH', plugin_dir_path(__FILE__));
 
@@ -184,7 +184,7 @@ add_action('wp_footer', function () {
 </label>
     <small id="error-privacy" class="wa-error"></small>
 
-    <button onclick="sendWhatsapp()"> Send </button>
+    <button id="sentButtonWA" onclick="sendWhatsapp()"> Send </button>
 
     <div class="wa-footer">
       <span class="dot"></span> Online | <a href="<?= esc_url($privacy_policy_url) ?>">Privacy</a>
@@ -252,7 +252,7 @@ function wa_greeting_save_submission() {
     // Create the post with metadata
     $post_id = wp_insert_post([
         'post_type'   => 'wa_submission',
-        'post_title'  => $data['name'] . ' - ' . current_time('mysql'),
+        'post_title'  => $data['name'] . ' - ' . current_time('n/j/Y H:i:s'),
         'post_status' => 'publish',
         'meta_input'  => $data
     ]);
@@ -884,7 +884,7 @@ function wa_handle_excel_export() {
             get_post_meta($post->ID, 'number', true),
             get_post_meta($post->ID, 'message', true),
             get_post_meta($post->ID, 'url', true),
-            get_the_date('Y-m-d H:i:s', $post),
+            get_the_date('n/j/Y', $post),
         ]);
     }
 
@@ -925,6 +925,10 @@ function wa_render_settings_page() {
             'number'        => intval($_POST['wa_gs_map_number']),
             'message'       => intval($_POST['wa_gs_map_message']),
             'url'           => intval($_POST['wa_gs_map_url']),
+            'year'          => intval($_POST['wa_gs_map_year']),
+            'status_new'    => intval($_POST['wa_gs_map_status_new']),
+            'wa_source'     => intval($_POST['wa_gs_map_wa_source']),
+            'utm_data'      => intval($_POST['wa_gs_map_utm_data']),
         ];
         update_option('wa_gsheets_mapping', $mapping);
 
@@ -946,7 +950,7 @@ function wa_render_settings_page() {
     $gsheets_spreadsheet_id = get_option('wa_gsheets_spreadsheet_id', '');
     $gsheets_sheet_name = get_option('wa_gsheets_sheet_name', 'Sheet1');
     $gsheets_credentials = get_option('wa_gsheets_credentials', '');
-    $gsheets_mapping = get_option('wa_gsheets_mapping', [
+    $default_mapping = [
         'date'          => 1,
         'name'          => 2,
         'email'         => 3,
@@ -956,7 +960,13 @@ function wa_render_settings_page() {
         'number'        => 7,
         'message'       => 8,
         'url'           => 9,
-    ]);
+        'year'          => 10,
+        'status_new'    => 11,
+        'wa_source'     => 12,
+        'utm_data'      => 13,
+    ];
+    $gsheets_mapping = get_option('wa_gsheets_mapping', $default_mapping);
+    $gsheets_mapping = array_merge($default_mapping, (array) $gsheets_mapping);
 
     ?>
     <div class="wrap wa-settings-wrap">
@@ -1050,6 +1060,10 @@ function wa_render_settings_page() {
                             <tr><td>Phone Number</td><td><input type="number" name="wa_gs_map_number" value="<?= $gsheets_mapping['number'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>Message</td><td><input type="number" name="wa_gs_map_message" value="<?= $gsheets_mapping['message'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>Page URL</td><td><input type="number" name="wa_gs_map_url" value="<?= $gsheets_mapping['url'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Year (TAHUN)</td><td><input type="number" name="wa_gs_map_year" value="<?= $gsheets_mapping['year'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Status (NEW)</td><td><input type="number" name="wa_gs_map_status_new" value="<?= $gsheets_mapping['status_new'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>WA Source</td><td><input type="number" name="wa_gs_map_wa_source" value="<?= $gsheets_mapping['wa_source'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>UTM Data</td><td><input type="number" name="wa_gs_map_utm_data" value="<?= $gsheets_mapping['utm_data'] ?>" min="0" style="width:60px"></td></tr>
                         </table>
                     </td>
                 </tr>
