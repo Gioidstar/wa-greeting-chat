@@ -36,7 +36,7 @@ function wa_send_to_google_sheet($post_id, $data) {
         'phone'   => $data['phone'] ?? '',
         'service' => $data['service'] ?? '',
         'message' => $data['message'] ?? '',
-        'time'    => current_time('mysql')
+        'time'    => current_time('n/j/Y')
     ];
 
     $payload = wp_json_encode($body);
