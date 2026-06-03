@@ -1,267 +1,249 @@
+@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+
 #wa-widget {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-  }
-  #wa-widget button {
-    background: none;
-    border: none;
-    border-radius: 50%;
-    font-size: 24px;
-    padding: 0;
-    cursor: pointer;
-    width: 60px;
-    height: 60px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    filter: drop-shadow(0 4px 8px rgba(0,0,0,0.2));
-  }
-  #wa-widget button svg {
-    width: 100px;
-    height: 100px;
-  }
-  
-  #wa-chat-box {
-    display: none;
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    width: 300px;
-    background: #fff;
-    border-radius: 10px;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    z-index: 9999;
-    overflow: hidden;
-    font-family: 'Poppins', sans-serif;
-  }
-  
-  .wa-header {
-    background: #25D366;
-    color: white;
-    padding: 10px;
-    display: flex;
-    justify-content: space-between;
-    align-items: center;
-  }
-  .wa-header > div {
-    display: flex;
-    align-items: center;
-  }
-  .wa-header img {
-    width: 35px;
-    height: 35px;
-    border-radius: 50%;
-    margin-right: 8px;
-  }
-  .wa-header strong {
-    font-size: 14px;
-  }
-  .wa-header > span {
-    font-size: 22px;
-    cursor: pointer;
-    line-height: 1;
-  }
-  
-  .wa-body {
-    padding: 15px;
-  }
-  .wa-body label {
-    display: block;
-    margin: 10px 0 5px;
-    font-size: 13px;
-  }
-  .wa-body input,
-  .wa-body select,
-  .wa-body textarea {
-    width: 100%;
-    padding: 7px;
-    font-size: 13px;
-    border: 1px solid #ccc;
-    border-radius: 5px;
-  }
-  .wa-body textarea {
-    resize: vertical;
-  }
-  .wa-body button {
-    margin-top: 5px;
-    background-color: #25D366;
-    color: white;
-    border: none;
-    padding: 10px;
-    width: 100%;
-    border-radius: 5px;
-    cursor: pointer;
-  }
-  .wa-body button:hover {
-    background-color: #1ebc57;
-  }
-  
-  .wa-footer {
-    font-size: 12px;
-    text-align: center;
-    margin-top: 10px;
-  }
-  .dot {
-    height: 8px;
-    width: 8px;
-    background-color: green;
-    border-radius: 50%;
-    display: inline-block;
-  }
-  
-  #wa-widget {
-    position: fixed;
-    bottom: 20px;
-    right: 20px;
-    z-index: 9999;
-  }
-  
-  #wa-widget button {
-    background: none;
-    color: white;
-    font-size: 24px;
-    border: none;
-    cursor: pointer;
-    filter: drop-shadow(0 4px 6px rgba(0, 0, 0, 0.2));
-  }
-  
-  #wa-chat-box {
-    position: fixed;
-    bottom: 80px;
-    right: 20px;
-    width: 300px;
-    background: white;
-    border: 1px solid #ddd;
-    box-shadow: 0 4px 12px rgba(0,0,0,0.15);
-    padding: 15px;
-    border-radius: 10px;
-    display: none;
-    z-index: 9999;
-  }
-  
-  #wa-chat-box.open {
-    display: block;
-  }
-  
-  .wa-error {
-    color: red;
-    font-size: 0.8em;
-    margin-top: 4px;
-    display: block;
-  }
- 
-  label.privacy {
-    display: -webkit-inline-box;
-    flex-direction: row;
-    margin: 5px 0 0;
-  }
-
-  .checkmark {
-    display: flex;
-    align-items: center;
-    gap: 4px;
-  }
-
-  .checkmark p {
-    margin: 0 0 0 10px;
-  }
-
-  .required {
-    color: #ff0000;
-    margin-left: 3px;
-  }
-  
-  /* Error message styling */
-  .wa-error {
-    color: #ff0000;
-    font-size: 12px;
-    display: block;
-    margin-top: 2px;
-    margin-bottom: 0;
-  }
-  
-  /* Make select field with errors have a red border */
-  select:invalid + .wa-error:not(:empty) {
-    border-color: #ff0000;
-  }
-
- /* Loading Button Styles */
-#wa-chat-box button {
-  position: relative;
-  transition: all 0.3s ease;
+  position: fixed;
+  bottom: 20px;
+  right: 20px;
+  z-index: 9999;
 }
 
-#wa-chat-box button.loading {
-  background-color: #999;
-  color: transparent;
-}
-
-#wa-chat-box button.loading::after {
-  content: "";
-  position: absolute;
-  width: 20px;
-  height: 20px;
-  top: 50%;
-  left: 50%;
-  margin-left: -10px;
-  margin-top: -10px;
-  border: 3px solid rgba(255, 255, 255, 0.3);
+#wa-widget button {
+  background: none;
+  border: none;
   border-radius: 50%;
-  border-top-color: #fff;
-  animation: spin 1s ease-in-out infinite;
+  cursor: pointer;
+  width: 70px;
+  height: 70px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  filter: drop-shadow(0 4px 10px rgba(0, 0, 0, 0.2));
+  transition: transform 0.2s ease;
+  padding: 0;
 }
 
-@keyframes spin {
-  to { transform: rotate(360deg); }
+#wa-widget button:hover {
+  transform: scale(1.08);
 }
 
-/* Country Code Phone Input */
+#wa-widget button svg {
+  width: 70px;
+  height: 70px;
+}
+
+#wa-chat-box {
+  display: none;
+  position: fixed;
+  bottom: 90px;
+  right: 20px;
+  width: 340px;
+  max-width: 90vw;
+  background: #ffffff;
+  border-radius: 20px;
+  box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05);
+  z-index: 9999;
+  overflow: hidden;
+  font-family: 'Poppins', sans-serif;
+  border: 1px solid rgba(0, 0, 0, 0.06);
+  box-sizing: border-box;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+#wa-chat-box.open {
+  display: block;
+}
+
+.wa-header {
+  background: #25D366;
+  color: #ffffff;
+  padding: 20px 24px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  border-top-left-radius: 20px;
+  border-top-right-radius: 20px;
+}
+
+.wa-header>div {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+}
+
+.wa-header img {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  object-fit: cover;
+  border: 2px solid rgba(255, 255, 255, 0.4);
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.1);
+}
+
+.wa-header-text {
+  display: flex;
+  flex-direction: column;
+  text-align: left;
+}
+
+.wa-header strong {
+  font-size: 16px;
+  font-weight: 700;
+  line-height: 1.2;
+  letter-spacing: -0.2px;
+}
+
+.wa-header-subtitle {
+  font-size: 11px;
+  color: rgba(255, 255, 255, 0.9);
+  margin-top: 3px;
+  font-weight: 400;
+}
+
+.wa-header>span {
+  font-size: 26px;
+  cursor: pointer;
+  line-height: 1;
+  color: rgba(255, 255, 255, 0.8);
+  transition: color 0.2s, transform 0.2s;
+  user-select: none;
+}
+
+.wa-header>span:hover {
+  color: #ffffff;
+  transform: scale(1.1);
+}
+
+.wa-body {
+  padding: 24px;
+  max-height: 70vh;
+  overflow-y: auto;
+  box-sizing: border-box;
+}
+
+.wa-body label {
+  display: block;
+  margin: 14px 0 6px;
+  font-size: 13px;
+  font-weight: 600;
+  color: #333333;
+  text-align: left;
+}
+
+.wa-body label:first-of-type {
+  margin-top: 0;
+}
+
+.wa-body input,
+.wa-body select,
+.wa-body textarea {
+  width: 100%;
+  padding: 10px 14px;
+  font-size: 14px;
+  border: 1px solid #777777;
+  border-radius: 8px;
+  background-color: #ffffff;
+  color: #333333;
+  box-sizing: border-box;
+  font-family: inherit;
+  transition: border-color 0.2s, box-shadow 0.2s;
+}
+
+.wa-body input::placeholder,
+.wa-body textarea::placeholder {
+  color: #888888;
+  opacity: 1;
+}
+
+.wa-body input:focus,
+.wa-body select:focus,
+.wa-body textarea:focus,
+.wa-country-selected.open {
+  border-color: #25D366;
+  box-shadow: 0 0 0 3px rgba(37, 211, 102, 0.15);
+  outline: none;
+}
+
+.wa-body textarea {
+  resize: vertical;
+  min-height: 80px;
+}
+
+.wa-body select {
+  appearance: none;
+  -webkit-appearance: none;
+  -moz-appearance: none;
+  background-image: url("data:image/svg+xml;charset=UTF-8,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='%23666666' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+  background-repeat: no-repeat;
+  background-position: right 18px center;
+  background-size: 14px;
+  padding-right: 40px !important;
+  cursor: pointer;
+}
+
+/* Country Code Phone Input Side-by-Side */
 .wa-phone-wrap {
   display: flex;
-  gap: 0;
+  flex-direction: row;
+  gap: 8px;
+  width: 100%;
+  box-sizing: border-box;
   align-items: stretch;
-}
-
-.wa-phone-wrap input#wa-number {
-  flex: 1;
-  border-radius: 0 5px 5px 0;
-  border-left: none;
-  min-width: 0;
 }
 
 .wa-country-select {
   position: relative;
+  width: 85px;
   flex-shrink: 0;
 }
 
 .wa-country-selected {
   display: flex;
   align-items: center;
-  gap: 4px;
-  padding: 7px 8px;
-  border: 1px solid #ccc;
-  border-radius: 5px 0 0 5px;
+  justify-content: space-between;
+  gap: 3px;
+  width: 100%;
+  padding: 10px 6px;
+  border: 1px solid #777777;
+  border-radius: 8px;
   cursor: pointer;
-  background: #f9f9f9;
+  background: #ffffff;
   height: 100%;
   box-sizing: border-box;
-  font-size: 16px;
+  font-size: 11px;
+  color: #333333;
+  transition: border-color 0.2s, box-shadow 0.2s;
 }
 
 .wa-country-selected:hover {
-  background: #f0f0f0;
+  background: #fcfcfc;
+  border-color: #555555;
 }
 
 .wa-country-flag {
-  font-size: 18px;
+  font-size: 14px;
   line-height: 1;
+}
+
+.wa-country-code-text {
+  flex: 1;
+  font-weight: 500;
+  text-align: left;
+  color: #333333;
+  font-size: 11px;
 }
 
 .wa-country-arrow {
   font-size: 10px;
   color: #666;
+}
+
+.wa-phone-wrap input#wa-number {
+  flex: 1;
+  width: 100%;
+  border: 1px solid #777777;
+  border-radius: 8px;
+  padding: 10px 14px;
+  box-sizing: border-box;
 }
 
 .wa-country-dropdown {
@@ -270,14 +252,15 @@
   top: 100%;
   left: 0;
   width: 240px;
-  max-height: 250px;
-  background: #fff;
-  border: 1px solid #ccc;
-  border-radius: 5px;
-  box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+  max-height: 220px;
+  background: #ffffff;
+  border: 1px solid #ddd;
+  border-radius: 8px;
+  box-shadow: 0 4px 16px rgba(0, 0, 0, 0.12);
   z-index: 10000;
-  margin-top: 2px;
+  margin-top: 4px;
   overflow: hidden;
+  box-sizing: border-box;
 }
 
 .wa-country-dropdown.open {
@@ -286,9 +269,9 @@
 
 .wa-country-search {
   width: 100% !important;
-  padding: 8px 10px !important;
+  padding: 10px 14px !important;
   border: none !important;
-  border-bottom: 1px solid #eee !important;
+  border-bottom: 1px solid #eeeeee !important;
   border-radius: 0 !important;
   font-size: 13px !important;
   outline: none;
@@ -299,22 +282,23 @@
   list-style: none;
   margin: 0;
   padding: 0;
-  max-height: 200px;
+  max-height: 170px;
   overflow-y: auto;
 }
 
 .wa-country-list li {
   display: flex;
   align-items: center;
-  gap: 8px;
-  padding: 8px 10px;
+  gap: 10px;
+  padding: 10px 14px;
   cursor: pointer;
   font-size: 13px;
+  text-align: left;
   transition: background 0.15s;
 }
 
 .wa-country-list li:hover {
-  background: #f0f6fc;
+  background: #f4fbf7;
 }
 
 .wa-country-list li .cc-flag {
@@ -327,10 +311,167 @@
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
+  color: #333333;
 }
 
 .wa-country-list li .cc-dial {
-  color: #888;
+  color: #666666;
+  font-weight: 500;
   font-size: 12px;
   flex-shrink: 0;
+}
+
+/* Send Button Style */
+#wa-chat-box button#sentButtonWA {
+  margin-top: 18px;
+  background-color: #25D366;
+  color: #ffffff;
+  border: none;
+  padding: 12px 20px;
+  width: 100%;
+  border-radius: 10px;
+  font-size: 15px;
+  font-weight: 700;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  box-sizing: border-box;
+  transition: background-color 0.2s ease, transform 0.1s ease, box-shadow 0.2s ease;
+  box-shadow: 0 4px 12px rgba(37, 211, 102, 0.2);
+  position: relative;
+}
+
+#wa-chat-box button#sentButtonWA:hover {
+  background-color: #168a41 !important;
+  /* Elegant, darker green color */
+  box-shadow: 0 4px 16px rgba(22, 138, 65, 0.3);
+}
+
+#wa-chat-box button#sentButtonWA:active {
+  transform: scale(0.98);
+}
+
+.wa-btn-icon {
+  font-size: 12px;
+  line-height: 1;
+}
+
+/* Loading Button Styles */
+#wa-chat-box button#sentButtonWA.loading {
+  background-color: #999999 !important;
+  color: transparent !important;
+  pointer-events: none;
+  box-shadow: none;
+}
+
+#wa-chat-box button#sentButtonWA.loading::after {
+  content: "";
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  top: 50%;
+  left: 50%;
+  margin-left: -10px;
+  margin-top: -10px;
+  border: 3px solid rgba(255, 255, 255, 0.3);
+  border-radius: 50%;
+  border-top-color: #ffffff;
+  animation: spin 1s linear infinite;
+}
+
+@keyframes spin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+/* Checkbox and Privacy elements */
+label.privacy {
+  display: flex;
+  align-items: flex-start;
+  margin: 12px 0 0;
+  cursor: pointer;
+  user-select: none;
+  font-weight: 400 !important;
+}
+
+label.privacy input[type="checkbox"] {
+  width: auto;
+  margin: 3px 8px 0 0;
+  flex-shrink: 0;
+  accent-color: #25D366;
+  cursor: pointer;
+}
+
+.checkmark {
+  display: flex;
+  align-items: center;
+  text-align: left;
+}
+
+.checkmark p {
+  margin: 0;
+  font-size: 12px;
+  color: #666666;
+  line-height: 1.4;
+  font-weight: 400;
+}
+
+.checkmark p a {
+  color: #25D366;
+  text-decoration: none;
+  font-weight: 500;
+}
+
+.checkmark p a:hover {
+  text-decoration: underline;
+}
+
+.required {
+  color: #ff0000;
+  margin-left: 2px;
+  font-weight: bold;
+}
+
+.wa-error {
+  color: #ff0000;
+  font-size: 11px;
+  display: block;
+  margin-top: 4px;
+  margin-bottom: 0;
+  text-align: left;
+  font-weight: 500;
+}
+
+/* Footer Style */
+.wa-footer {
+  font-size: 11px;
+  text-align: center;
+  margin-top: 20px;
+  color: #888888;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+}
+
+.wa-footer a {
+  color: #888888;
+  text-decoration: none;
+}
+
+.wa-footer a:hover {
+  color: #666666;
+  text-decoration: underline;
+}
+
+.dot {
+  height: 6px;
+  width: 6px;
+  background-color: #25D366;
+  border-radius: 50%;
+  display: inline-block;
+  box-shadow: 0 0 0 2px rgba(37, 211, 102, 0.2);
 }

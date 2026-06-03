@@ -90,7 +90,7 @@ class WA_Greeting_Chat_Google_Sheets {
 
         // Prepare raw data
         $raw_row = [
-            'date'          => current_time('n/j/Y'),
+            'date'          => current_time('j F Y'),
             'name'          => $data['name'],
             'email'         => $data['email'],
             'company'       => $data['company'],
