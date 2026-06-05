@@ -174,6 +174,11 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+### Version 1.13
+- Integration to brevo
+- Redesign UI
+- Adding some sanitation input rule
+
 ### Version 1.12
 - **New Column: Year & Status Mappings** — Added support for sending the current Year only and a custom status indicator (`NEW`).
 - **New Column: WA Source Classification** — Automatically classifies and logs the page source where the chat was initiated 

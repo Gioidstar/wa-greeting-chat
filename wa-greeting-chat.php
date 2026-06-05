@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.12
+ * Version: 1.13
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -16,7 +16,7 @@ if (!defined('ABSPATH')) {
 }
 
 // Define plugin constants
-define('WA_GREETING_CHAT_VERSION', '1.12');
+define('WA_GREETING_CHAT_VERSION', '1.13');
 define('WA_GREETING_CHAT_FILE', __FILE__);
 define('WA_GREETING_CHAT_PATH', plugin_dir_path(__FILE__));
 
@@ -86,18 +86,23 @@ add_action('wp_enqueue_scripts', function () {
         set_transient('wa_service_tree', $service_tree, HOUR_IN_SECONDS);
     }
 
+    $blocked_domains_raw = get_option('wa_blocked_email_domains', '');
+    $blocked_domains = !empty($blocked_domains_raw) ? array_values(array_filter(array_map('trim', explode(',', strtolower($blocked_domains_raw))))) : [];
+
     wp_localize_script('wa-greeting-chat-script', 'waGreeting', [
         'ajax_url' => admin_url('admin-ajax.php'),
         'nonce' => wp_create_nonce('wa_greeting_nonce'),
         'service_tree' => $service_tree,
+        'blocked_domains' => $blocked_domains,
     ]);
 });
 
 // Insert HTML into footer
 add_action('wp_footer', function () {
-  $chat_label = get_option('wa_chat_label', 'Click to Chat');
+  $chat_label = get_option('wa_chat_label', ' Chat Us');
   $chat_image = get_option('wa_chat_image', 'https://randomuser.me/api/portraits/women/44.jpg');
   $privacy_policy_url = get_option('wa_privacy_policy_url', '#');
+  $newsletter_label = get_option('wa_newsletter_label', 'Keep me updated with the latest news, solutions, and special offers');
 ?>
 <div id="wa-widget">
   <button onclick="toggleChat()">
@@ -124,18 +129,21 @@ add_action('wp_footer', function () {
   <div class="wa-header">
     <div>
       <img src="<?= esc_url($chat_image) ?>" alt="agent">
-      <strong><?= esc_html($chat_label) ?></strong>
+      <div class="wa-header-text">
+        <strong><?= esc_html($chat_label) ?></strong>
+        <span class="wa-header-subtitle">Fill out the form to start the chat</span>
+      </div>
     </div>
     <span onclick="toggleChat()">&times;</span>
   </div>
 
   <div class="wa-body">
     <label>Name<span class="required">*</span></label>
-    <input id="wa-name" type="text" placeholder="Enter FullName">
+    <input id="wa-name" type="text" placeholder="Enter Name">
     <small id="error-name" class="wa-error"></small>
 
-    <label>Email<span class="required">*</span></label>
-    <input id="wa-email" type="email" placeholder="Enter Email">
+    <label>Business Email<span class="required">*</span></label>
+    <input id="wa-email" type="email" placeholder="name@company.com">
     <small id="error-email" class="wa-error"></small>
 
     <label>Company<span class="required">*</span></label>
@@ -161,6 +169,7 @@ add_action('wp_footer', function () {
       <div class="wa-country-select" id="wa-country-select">
         <div class="wa-country-selected" id="wa-country-selected">
           <span class="wa-country-flag" id="wa-country-flag">🇮🇩</span>
+          <span class="wa-country-code-text" id="wa-country-code-text">ID +62</span>
           <span class="wa-country-arrow">▾</span>
         </div>
         <div class="wa-country-dropdown" id="wa-country-dropdown">
@@ -169,25 +178,33 @@ add_action('wp_footer', function () {
         </div>
       </div>
       <input type="hidden" id="wa-country-code" value="62">
-      <input id="wa-number" type="tel" placeholder="81234567890">
+      <input id="wa-number" type="tel" placeholder="812-3456-7890">
     </div>
     <small id="error-number" class="wa-error"></small>
 
     <label>Message<span class="required">*</span></label>
-    <textarea id="wa-message" placeholder="Enter Message.."></textarea>
+    <textarea id="wa-message" placeholder="Enter your message here..." style="height: 20px;"></textarea>
     <small id="error-message" class="wa-error"></small>
+    <label>Checkboxes<span class="required">*</span></label>
     <label class="privacy">
   <input type="checkbox" id="wa-privacy" />
   <div class="checkmark">
-    <p>Accept <a href="<?= esc_url($privacy_policy_url) ?>">Privacy Policy<span class="required">*</span></a></p>
+    <p>Accept <a href="<?= esc_url($privacy_policy_url) ?>">Privacy & Policy<span class="required">*</span></a></p>
   </div>
 </label>
     <small id="error-privacy" class="wa-error"></small>
 
-    <button id="sentButtonWA" onclick="sendWhatsapp()"> Send </button>
+    <label class="privacy" style="margin-top: 8px;">
+  <input type="checkbox" id="wa-newsletter" />
+  <div class="checkmark">
+    <p><?= esc_html($newsletter_label) ?></p>
+  </div>
+</label>
+
+    <button id="sentButtonWA" onclick="sendWhatsapp()">Send</button>
 
     <div class="wa-footer">
-      <span class="dot"></span> Online | <a href="<?= esc_url($privacy_policy_url) ?>">Privacy</a>
+       <a href="https://idstar.co.id/terms-of-service/">Terms & Conditions</a>
     </div>
   </div>
 </div>
@@ -247,6 +264,7 @@ function wa_greeting_save_submission() {
         'number'        => ltrim(sanitize_text_field($_POST['number']), '0'),
         'message'       => sanitize_textarea_field($_POST['message']),
         'url'           => isset($_POST['url']) ? esc_url_raw($_POST['url']) : '',
+        'newsletter'    => isset($_POST['newsletter']) && $_POST['newsletter'] === 'yes' ? 'yes' : 'no',
     ];
 
     // Create the post with metadata
@@ -287,6 +305,15 @@ function wa_greeting_save_submission() {
     $gsheets = new WA_Greeting_Chat_Google_Sheets();
     if ($gsheets->is_enabled()) {
         $gsheets->append_data($data);
+    }
+
+    // Save to Brevo if enabled and user consented
+    if ($data['newsletter'] === 'yes') {
+        require_once WA_GREETING_CHAT_PATH . 'includes/class-brevo.php';
+        $brevo = new WA_Greeting_Chat_Brevo();
+        if ($brevo->is_enabled()) {
+            $brevo->add_or_update_contact($data);
+        }
     }
 
     wp_send_json_success([
@@ -415,7 +442,7 @@ add_action('add_meta_boxes', function () {
 });
 
 function wa_render_submission_details($post) {
-    $fields = ['name', 'email', 'company', 'service_group', 'plugin', 'number', 'message', 'url'];
+    $fields = ['name', 'email', 'company', 'service_group', 'plugin', 'number', 'message', 'url', 'newsletter'];
     $labels = [
         'name' => 'Name',
         'email' => 'Email',
@@ -425,6 +452,7 @@ function wa_render_submission_details($post) {
         'number' => 'Number',
         'message' => 'Message',
         'url' => 'URL',
+        'newsletter' => 'Newsletter Subscription',
     ];
     echo '<div class="wa-detail-header">';
     echo '<img src="' . esc_url(plugin_dir_url(WA_GREETING_CHAT_FILE) . 'assets/icon.svg') . '" alt="WA Greeting Chat" class="wa-detail-logo">';
@@ -445,6 +473,9 @@ function wa_render_submission_details($post) {
             echo '<td><a href="mailto:' . esc_attr($value) . '">' . esc_html($value) . '</a></td>';
         } elseif ($field === 'url' && !empty($value)) {
             echo '<td><a href="' . esc_url($value) . '" target="_blank">' . esc_html($value) . '</a></td>';
+        } elseif ($field === 'newsletter') {
+            $display_val = ($value === 'yes') ? 'Yes (Subscribed to updates)' : 'No';
+            echo '<td><input type="text" value="' . esc_attr($display_val) . '" class="regular-text" readonly></td>';
         } else {
             echo '<td><input type="text" value="' . esc_attr($value) . '" class="regular-text" readonly></td>';
         }
@@ -932,10 +963,25 @@ function wa_render_settings_page() {
         ];
         update_option('wa_gsheets_mapping', $mapping);
 
+        // Handle Brevo settings
+        update_option('wa_brevo_enabled', isset($_POST['wa_brevo_enabled']) ? 'yes' : 'no');
+        update_option('wa_brevo_api_key', sanitize_text_field($_POST['wa_brevo_api_key']));
+        update_option('wa_brevo_list_ids', sanitize_text_field($_POST['wa_brevo_list_ids']));
+        update_option('wa_newsletter_label', sanitize_text_field($_POST['wa_newsletter_label']));
+
+        // Handle Brevo attributes mapping
+        update_option('wa_brevo_map_first_name', sanitize_text_field($_POST['wa_brevo_map_first_name']));
+        update_option('wa_brevo_map_last_name', sanitize_text_field($_POST['wa_brevo_map_last_name']));
+        update_option('wa_brevo_map_number', sanitize_text_field($_POST['wa_brevo_map_number']));
+        update_option('wa_brevo_map_company', sanitize_text_field($_POST['wa_brevo_map_company']));
+        update_option('wa_brevo_map_service', sanitize_text_field($_POST['wa_brevo_map_service']));
+        update_option('wa_brevo_map_message', sanitize_text_field($_POST['wa_brevo_map_message']));
+        update_option('wa_brevo_map_url', sanitize_text_field($_POST['wa_brevo_map_url']));
+
         echo '<div class="updated"><p>Settings saved.</p></div>';
     }
 
-    $label = get_option('wa_chat_label', 'Click to Chat');
+    $label = get_option('wa_chat_label', 'Chat Us');
     $image = get_option('wa_chat_image', 'https://randomuser.me/api/portraits/women/44.jpg');
     $number = get_option('wa_admin_number', '');
     $admin_email = get_option('admin_email');
@@ -967,6 +1013,20 @@ function wa_render_settings_page() {
     ];
     $gsheets_mapping = get_option('wa_gsheets_mapping', $default_mapping);
     $gsheets_mapping = array_merge($default_mapping, (array) $gsheets_mapping);
+
+    // Brevo Integration settings variables
+    $brevo_enabled = get_option('wa_brevo_enabled', 'no');
+    $brevo_api_key = get_option('wa_brevo_api_key', '');
+    $brevo_list_ids = get_option('wa_brevo_list_ids', '');
+    $newsletter_label = get_option('wa_newsletter_label', 'Keep me updated with the latest news, solutions, and special offers');
+
+    $brevo_map_first_name = get_option('wa_brevo_map_first_name', 'FIRSTNAME');
+    $brevo_map_last_name = get_option('wa_brevo_map_last_name', 'LASTNAME');
+    $brevo_map_number = get_option('wa_brevo_map_number', 'SMS');
+    $brevo_map_company = get_option('wa_brevo_map_company', 'COMPANY');
+    $brevo_map_service = get_option('wa_brevo_map_service', '');
+    $brevo_map_message = get_option('wa_brevo_map_message', '');
+    $brevo_map_url = get_option('wa_brevo_map_url', '');
 
     ?>
     <div class="wrap wa-settings-wrap">
@@ -1064,6 +1124,52 @@ function wa_render_settings_page() {
                             <tr><td>Status (NEW)</td><td><input type="number" name="wa_gs_map_status_new" value="<?= $gsheets_mapping['status_new'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>WA Source</td><td><input type="number" name="wa_gs_map_wa_source" value="<?= $gsheets_mapping['wa_source'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>UTM Data</td><td><input type="number" name="wa_gs_map_utm_data" value="<?= $gsheets_mapping['utm_data'] ?>" min="0" style="width:60px"></td></tr>
+                        </table>
+                    </td>
+                </tr>
+                <tr>
+                    <th colspan="2"><h3>Brevo Integration</h3></th>
+                </tr>
+                <tr>
+                    <th><label for="wa_brevo_enabled">Enable Brevo Integration</label></th>
+                    <td>
+                        <input type="checkbox" name="wa_brevo_enabled" id="wa_brevo_enabled" value="yes" <?= checked($brevo_enabled, 'yes') ?>>
+                        <p class="description">Simpan kontak ke Brevo (Sendinblue) ketika user menyetujui newsletter.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="wa_brevo_api_key">Brevo API Key</label></th>
+                    <td>
+                        <input type="password" name="wa_brevo_api_key" id="wa_brevo_api_key" value="<?= esc_attr($brevo_api_key) ?>" class="regular-text">
+                        <p class="description">Masukkan API Key v3 Brevo Anda.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="wa_brevo_list_ids">Brevo List IDs</label></th>
+                    <td>
+                        <input type="text" name="wa_brevo_list_ids" id="wa_brevo_list_ids" value="<?= esc_attr($brevo_list_ids) ?>" class="regular-text">
+                        <p class="description">Masukkan ID List Brevo (pisahkan dengan koma jika lebih dari satu). Contoh: 2, 3</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th><label for="wa_newsletter_label">Newsletter Checkbox Label</label></th>
+                    <td>
+                        <input type="text" name="wa_newsletter_label" id="wa_newsletter_label" value="<?= esc_attr($newsletter_label) ?>" class="large-text">
+                        <p class="description">Teks yang ditampilkan di samping checkbox newsletter pada widget chat.</p>
+                    </td>
+                </tr>
+                <tr>
+                    <th>Brevo Attributes Mapping</th>
+                    <td>
+                        <p class="description">Petakan data formulir ke nama atribut kontak di Brevo (misal FIRSTNAME, LASTNAME, SMS, COMPANY). Kosongkan jika tidak ingin dikirim.</p>
+                        <table class="wa-mapping-table">
+                            <tr><td>First Name</td><td><input type="text" name="wa_brevo_map_first_name" value="<?= esc_attr($brevo_map_first_name) ?>" style="width:150px" placeholder="FIRSTNAME"></td></tr>
+                            <tr><td>Last Name</td><td><input type="text" name="wa_brevo_map_last_name" value="<?= esc_attr($brevo_map_last_name) ?>" style="width:150px" placeholder="LASTNAME"></td></tr>
+                            <tr><td>Phone Number</td><td><input type="text" name="wa_brevo_map_number" value="<?= esc_attr($brevo_map_number) ?>" style="width:150px" placeholder="SMS"></td></tr>
+                            <tr><td>Company</td><td><input type="text" name="wa_brevo_map_company" value="<?= esc_attr($brevo_map_company) ?>" style="width:150px" placeholder="COMPANY"></td></tr>
+                            <tr><td>Service</td><td><input type="text" name="wa_brevo_map_service" value="<?= esc_attr($brevo_map_service) ?>" style="width:150px" placeholder="e.g. SERVICE"></td></tr>
+                            <tr><td>Message</td><td><input type="text" name="wa_brevo_map_message" value="<?= esc_attr($brevo_map_message) ?>" style="width:150px" placeholder="e.g. MESSAGE"></td></tr>
+                            <tr><td>Page URL</td><td><input type="text" name="wa_brevo_map_url" value="<?= esc_attr($brevo_map_url) ?>" style="width:150px" placeholder="e.g. URL"></td></tr>
                         </table>
                     </td>
                 </tr>
