@@ -174,6 +174,12 @@ Setiap kali ada update plugin:
 ---
 
 ## Changelog
+
+### Version 1.14
+- Reduced UI size.
+- Added gclid tracking.
+- Added aria-current for accessibility.
+
 ### Version 1.13
 - Integration to brevo
 - Redesign UI

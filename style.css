@@ -1,4 +1,4 @@
-@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');
+/*@import url('https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap');*/
 
 #wa-widget {
   position: fixed;
@@ -42,15 +42,18 @@
   border-radius: 20px;
   box-shadow: 0 12px 36px rgba(0, 0, 0, 0.12), 0 4px 12px rgba(0, 0, 0, 0.05);
   z-index: 9999;
-  overflow: hidden;
+  overflow-x: hidden;
+  overflow-y: auto;
   font-family: 'Poppins', sans-serif;
   border: 1px solid rgba(0, 0, 0, 0.06);
   box-sizing: border-box;
   transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+  max-height: 85vh;
+  flex-direction: column;
 }
 
 #wa-chat-box.open {
-  display: block;
+  display: flex;
 }
 
 .wa-header {
@@ -58,6 +61,7 @@
   color: #ffffff;
   padding: 20px 24px;
   display: flex;
+  flex-shrink: 0;
   justify-content: space-between;
   align-items: center;
   border-top-left-radius: 20px;
@@ -71,8 +75,8 @@
 }
 
 .wa-header img {
-  width: 44px;
-  height: 44px;
+  width: 36px;
+  height: 36px;
   border-radius: 50%;
   object-fit: cover;
   border: 2px solid rgba(255, 255, 255, 0.4);
@@ -86,7 +90,7 @@
 }
 
 .wa-header strong {
-  font-size: 16px;
+  font-size: 14px;
   font-weight: 700;
   line-height: 1.2;
   letter-spacing: -0.2px;
@@ -115,15 +119,15 @@
 
 .wa-body {
   padding: 24px;
-  max-height: 70vh;
   overflow-y: auto;
   box-sizing: border-box;
+  flex: 1;
 }
 
 .wa-body label {
   display: block;
-  margin: 14px 0 6px;
-  font-size: 13px;
+  margin: 10px 0 4px;
+  font-size: 12px;
   font-weight: 600;
   color: #333333;
   text-align: left;
@@ -138,7 +142,7 @@
 .wa-body textarea {
   width: 100%;
   padding: 10px 14px;
-  font-size: 14px;
+  font-size: 13px;
   border: 1px solid #777777;
   border-radius: 8px;
   background-color: #ffffff;
@@ -165,7 +169,7 @@
 
 .wa-body textarea {
   resize: vertical;
-  min-height: 80px;
+  min-height: 60px;
 }
 
 .wa-body select {
@@ -192,7 +196,7 @@
 
 .wa-country-select {
   position: relative;
-  width: 85px;
+  width: 90px;
   flex-shrink: 0;
 }
 
@@ -202,7 +206,7 @@
   justify-content: space-between;
   gap: 3px;
   width: 100%;
-  padding: 10px 6px;
+  padding: 8px 6px;
   border: 1px solid #777777;
   border-radius: 8px;
   cursor: pointer;
@@ -220,8 +224,17 @@
 }
 
 .wa-country-flag {
-  font-size: 14px;
   line-height: 1;
+  display: flex;
+  align-items: center;
+}
+
+.wa-flag-img {
+  width: 18px;
+  height: 15px;
+  object-fit: cover;
+  border-radius: 2px;
+  vertical-align: middle;
 }
 
 .wa-country-code-text {
@@ -242,7 +255,7 @@
   width: 100%;
   border: 1px solid #777777;
   border-radius: 8px;
-  padding: 10px 14px;
+  padding: 8px 12px;
   box-sizing: border-box;
 }
 
@@ -302,8 +315,14 @@
 }
 
 .wa-country-list li .cc-flag {
-  font-size: 18px;
   flex-shrink: 0;
+  display: flex;
+  align-items: center;
+}
+
+.wa-country-list li .cc-flag .wa-flag-img {
+  width: 18px;
+  height: 15px;
 }
 
 .wa-country-list li .cc-name {
@@ -323,14 +342,14 @@
 
 /* Send Button Style */
 #wa-chat-box button#sentButtonWA {
-  margin-top: 18px;
+  margin-top: 14px;
   background-color: #25D366;
   color: #ffffff;
   border: none;
-  padding: 12px 20px;
+  padding: 10px 16px;
   width: 100%;
   border-radius: 10px;
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 700;
   cursor: pointer;
   display: flex;
@@ -403,6 +422,12 @@ label.privacy input[type="checkbox"] {
   flex-shrink: 0;
   accent-color: #25D366;
   cursor: pointer;
+  padding: 0;
+}
+
+label.privacy input[type="checkbox"]:focus {
+  box-shadow: none;
+  outline: none;
 }
 
 .checkmark {
@@ -449,7 +474,7 @@ label.privacy input[type="checkbox"] {
 .wa-footer {
   font-size: 11px;
   text-align: center;
-  margin-top: 20px;
+  margin-top: 12px;
   color: #888888;
   display: flex;
   align-items: center;

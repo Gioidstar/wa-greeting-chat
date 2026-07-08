@@ -90,7 +90,8 @@ class WA_Greeting_Chat_Google_Sheets {
 
         // Prepare raw data
         $raw_row = [
-            'date'          => current_time('j F Y'),
+            'date'          => wp_date('Y-m-d H:i:sO'),
+            'month'         => wp_date('F'),
             'name'          => $data['name'],
             'email'         => $data['email'],
             'company'       => $data['company'],
@@ -99,10 +100,12 @@ class WA_Greeting_Chat_Google_Sheets {
             'number'        => $data['number'],
             'message'       => $data['message'],
             'url'           => $data['url'],
-            'year'          => current_time('Y'),
+            'year'          => wp_date('Y'),
             'status_new'    => 'NEW',
             'wa_source'     => $this->classify_url_source($data['url']),
             'utm_data'      => $this->extract_utm_params($data['url']),
+            'gclid'         => $this->get_gclid($data),
+            'first_url'     => $this->get_first_url($data),
         ];
 
         // Get mapping and build the row based on position
@@ -327,24 +330,82 @@ class WA_Greeting_Chat_Google_Sheets {
         }
         
         $query = parse_url($url, PHP_URL_QUERY);
-        if (empty($query)) {
-            return '';
-        }
-        
-        parse_str($query, $params);
-        
-        $utm_params = [];
-        foreach ($params as $key => $val) {
-            if (strpos(strtolower($key), 'utm_') === 0) {
-                $utm_params[$key] = $val;
+        if (!empty($query)) {
+            parse_str($query, $params);
+
+            $utm_params = [];
+            foreach ($params as $key => $val) {
+                if (strpos(strtolower($key), 'utm_') === 0) {
+                    $utm_params[$key] = $val;
+                }
+            }
+
+            if (!empty($utm_params)) {
+                return http_build_query($utm_params);
             }
         }
-        
-        if (empty($utm_params)) {
-            return '';
+
+        // Fallback: cookie first-touch dari landing page (utm_cookie),
+        // dipakai kalau user submit dari halaman yang URL-nya tanpa utm_.
+        if (!empty($_COOKIE['utm_cookie'])) {
+            return sanitize_text_field(wp_unslash($_COOKIE['utm_cookie']));
         }
-        
-        return http_build_query($utm_params);
+
+        return '';
+    }
+
+    /**
+     * Resolve the Google Ads click identifier (GCLID).
+     *
+     * Sumber dicek berurutan:
+     *   1. Nilai 'gclid' yang dikirim eksplisit dari form (POST/script.js)
+     *   2. Cookie "gclid_cookie" yang di-set GTM (berlaku 30 hari) — paling andal
+     *   3. Parameter ?gclid= dari URL halaman yang dikirim form
+     *
+     * @param array $data Submission data (memuat 'url' dan kemungkinan 'gclid')
+     * @return string
+     */
+    private function get_gclid($data) {
+        // 1. Dikirim eksplisit oleh form.
+        if (!empty($data['gclid'])) {
+            return sanitize_text_field($data['gclid']);
+        }
+
+        // 2. Cookie yang di-set GTM (dikirim browser bersama request AJAX).
+        if (!empty($_COOKIE['gclid_cookie'])) {
+            return sanitize_text_field(wp_unslash($_COOKIE['gclid_cookie']));
+        }
+
+        // 3. Parameter ?gclid= dari URL halaman.
+        if (!empty($data['url'])) {
+            $query = parse_url($data['url'], PHP_URL_QUERY);
+            if (!empty($query)) {
+                parse_str($query, $params);
+                if (!empty($params['gclid'])) {
+                    return sanitize_text_field($params['gclid']);
+                }
+            }
+        }
+
+        return '';
+    }
+
+    /**
+     * Resolve URL halaman pertama saat user masuk website (first-touch).
+     * Diambil dari cookie "first_url_cookie" (disimpan skrip di landing page).
+     * Fallback ke URL submit kalau cookie tidak ada.
+     *
+     * @param array $data Submission data (memuat 'first_url' dan/atau 'url')
+     * @return string
+     */
+    private function get_first_url($data) {
+        if (!empty($data['first_url'])) {
+            return esc_url_raw($data['first_url']);
+        }
+        if (!empty($_COOKIE['first_url_cookie'])) {
+            return esc_url_raw(wp_unslash($_COOKIE['first_url_cookie']));
+        }
+        return !empty($data['url']) ? $data['url'] : '';
     }
 
     /**

@@ -3,7 +3,7 @@
  * Plugin Name: WA Greeting Chat
  * Plugin URI: https://github.com/Gioidstar/wa-greeting-chat
  * Description: Floating WhatsApp chat form with greeting message and WP-Admin storage.
- * Version: 1.13
+ * Version: 1.14
  * Author: Gio fandi Idstar
  * Author URI: https://github.com/Gioidstar
  * Requires at least: 5.0
@@ -53,8 +53,10 @@ add_action('init', function() {
 // Enqueue frontend styles and scripts
 add_action('wp_enqueue_scripts', function () {
     if (is_admin()) return;
-    wp_enqueue_style('wa-greeting-chat-style', plugin_dir_url(__FILE__) . 'style.css', [], WA_GREETING_CHAT_VERSION);
-    wp_enqueue_script('wa-greeting-chat-script', plugin_dir_url(__FILE__) . 'script.js', [], WA_GREETING_CHAT_VERSION, true);
+    $wa_css_ver = @filemtime(plugin_dir_path(__FILE__) . 'style.css') ?: WA_GREETING_CHAT_VERSION;
+    $wa_js_ver  = @filemtime(plugin_dir_path(__FILE__) . 'script.js') ?: WA_GREETING_CHAT_VERSION;
+    wp_enqueue_style('wa-greeting-chat-style', plugin_dir_url(__FILE__) . 'style.css', [], $wa_css_ver);
+    wp_enqueue_script('wa-greeting-chat-script', plugin_dir_url(__FILE__) . 'script.js', [], $wa_js_ver, true);
     // Build service group tree (cached)
     $service_tree = get_transient('wa_service_tree');
     if ($service_tree === false) {
@@ -105,8 +107,8 @@ add_action('wp_footer', function () {
   $newsletter_label = get_option('wa_newsletter_label', 'Keep me updated with the latest news, solutions, and special offers');
 ?>
 <div id="wa-widget">
-  <button onclick="toggleChat()">
-  <svg version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 112.5" width="100" height="113">
+  <button type="button" onclick="toggleChat()" aria-label="Open WhatsApp chat" aria-expanded="false" aria-controls="wa-chat-box">
+  <svg aria-hidden="true" focusable="false" version="1.2" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 112.5" width="100" height="113">
     <g id="Layer 1">
         <path 
             d="m50 14.33c-23.02 0-41.67 18.65-41.67 41.67 0 7.37 1.94 14.29 5.32 20.29l-5.32 21.38 21.94-5.15q2.26 1.25 4.65 2.2 2.4 0.96 4.89 1.61 2.5 0.65 5.06 0.98 2.55 0.34 5.13 0.36c23.02 0 41.67-18.65 41.67-41.67 0-23.02-18.65-41.67-41.67-41.67z"
@@ -142,8 +144,8 @@ add_action('wp_footer', function () {
     <input id="wa-name" type="text" placeholder="Enter Name">
     <small id="error-name" class="wa-error"></small>
 
-    <label>Business Email<span class="required">*</span></label>
-    <input id="wa-email" type="email" placeholder="name@company.com">
+    <label>Email<span class="required">*</span></label>
+    <input id="wa-email" type="email" placeholder="Enter Email">
     <small id="error-email" class="wa-error"></small>
 
     <label>Company<span class="required">*</span></label>
@@ -168,7 +170,7 @@ add_action('wp_footer', function () {
     <div class="wa-phone-wrap">
       <div class="wa-country-select" id="wa-country-select">
         <div class="wa-country-selected" id="wa-country-selected">
-          <span class="wa-country-flag" id="wa-country-flag">🇮🇩</span>
+          <span class="wa-country-flag" id="wa-country-flag"><img src="https://flagcdn.com/w40/id.png" alt="ID" class="wa-flag-img"></span>
           <span class="wa-country-code-text" id="wa-country-code-text">ID +62</span>
           <span class="wa-country-arrow">▾</span>
         </div>
@@ -265,7 +267,12 @@ function wa_greeting_save_submission() {
         'message'       => sanitize_textarea_field($_POST['message']),
         'url'           => isset($_POST['url']) ? esc_url_raw($_POST['url']) : '',
         'newsletter'    => isset($_POST['newsletter']) && $_POST['newsletter'] === 'yes' ? 'yes' : 'no',
+        'gclid'         => isset($_POST['gclid']) ? sanitize_text_field($_POST['gclid']) : '',
+        'first_url'     => isset($_POST['first_url']) ? esc_url_raw($_POST['first_url']) : '',
     ];
+
+    // DEBUG SEMENTARA — hapus setelah selesai test.
+    error_log('WA DEBUG submit url=[' . $data['url'] . '] post_gclid=[' . ($_POST['gclid'] ?? '-') . '] post_first_url=[' . ($_POST['first_url'] ?? '-') . '] cookie_gclid=[' . ($_COOKIE['gclid_cookie'] ?? '-') . '] cookie_utm=[' . ($_COOKIE['utm_cookie'] ?? '-') . '] cookie_first_url=[' . ($_COOKIE['first_url_cookie'] ?? '-') . ']');
 
     // Create the post with metadata
     $post_id = wp_insert_post([
@@ -948,6 +955,7 @@ function wa_render_settings_page() {
         // Handle column mapping
         $mapping = [
             'date'          => intval($_POST['wa_gs_map_date']),
+            'month'         => intval($_POST['wa_gs_map_month']),
             'name'          => intval($_POST['wa_gs_map_name']),
             'email'         => intval($_POST['wa_gs_map_email']),
             'company'       => intval($_POST['wa_gs_map_company']),
@@ -960,6 +968,8 @@ function wa_render_settings_page() {
             'status_new'    => intval($_POST['wa_gs_map_status_new']),
             'wa_source'     => intval($_POST['wa_gs_map_wa_source']),
             'utm_data'      => intval($_POST['wa_gs_map_utm_data']),
+            'gclid'         => intval($_POST['wa_gs_map_gclid']),
+            'first_url'     => intval($_POST['wa_gs_map_first_url']),
         ];
         update_option('wa_gsheets_mapping', $mapping);
 
@@ -998,6 +1008,7 @@ function wa_render_settings_page() {
     $gsheets_credentials = get_option('wa_gsheets_credentials', '');
     $default_mapping = [
         'date'          => 1,
+        'month'         => 0,
         'name'          => 2,
         'email'         => 3,
         'company'       => 4,
@@ -1010,6 +1021,8 @@ function wa_render_settings_page() {
         'status_new'    => 11,
         'wa_source'     => 12,
         'utm_data'      => 13,
+        'gclid'         => 14,
+        'first_url'     => 0,
     ];
     $gsheets_mapping = get_option('wa_gsheets_mapping', $default_mapping);
     $gsheets_mapping = array_merge($default_mapping, (array) $gsheets_mapping);
@@ -1112,6 +1125,7 @@ function wa_render_settings_page() {
                         <p class="description">Tentukan urutan kolom di Google Sheets (1 = Kolom A, 2 = Kolom B, dst.). Isi 0 untuk tidak mengirim kolom tersebut.</p>
                         <table class="wa-mapping-table">
                             <tr><td>Date</td><td><input type="number" name="wa_gs_map_date" value="<?= $gsheets_mapping['date'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>Month</td><td><input type="number" name="wa_gs_map_month" value="<?= $gsheets_mapping['month'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>Name</td><td><input type="number" name="wa_gs_map_name" value="<?= $gsheets_mapping['name'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>Email</td><td><input type="number" name="wa_gs_map_email" value="<?= $gsheets_mapping['email'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>Company</td><td><input type="number" name="wa_gs_map_company" value="<?= $gsheets_mapping['company'] ?>" min="0" style="width:60px"></td></tr>
@@ -1124,6 +1138,8 @@ function wa_render_settings_page() {
                             <tr><td>Status (NEW)</td><td><input type="number" name="wa_gs_map_status_new" value="<?= $gsheets_mapping['status_new'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>WA Source</td><td><input type="number" name="wa_gs_map_wa_source" value="<?= $gsheets_mapping['wa_source'] ?>" min="0" style="width:60px"></td></tr>
                             <tr><td>UTM Data</td><td><input type="number" name="wa_gs_map_utm_data" value="<?= $gsheets_mapping['utm_data'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>GCLID</td><td><input type="number" name="wa_gs_map_gclid" value="<?= $gsheets_mapping['gclid'] ?>" min="0" style="width:60px"></td></tr>
+                            <tr><td>URL Awal (Landing)</td><td><input type="number" name="wa_gs_map_first_url" value="<?= $gsheets_mapping['first_url'] ?>" min="0" style="width:60px"></td></tr>
                         </table>
                     </td>
                 </tr>
