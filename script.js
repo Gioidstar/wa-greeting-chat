@@ -1,4 +1,21 @@
 
+// Baca nilai cookie berdasarkan nama.
+function getCookieValue(name) {
+  var match = document.cookie.match(new RegExp('(?:^|;\\s*)' + name + '=([^;]+)'));
+  return match ? decodeURIComponent(match[1]) : '';
+}
+
+// Resolve Google Ads click id: cookie "gclid_cookie" (di-set GTM, 30 hari),
+// fallback ke parameter ?gclid= di URL saat ini.
+function getGclid() {
+  var fromCookie = getCookieValue('gclid_cookie');
+  if (fromCookie) {
+    return fromCookie;
+  }
+  var fromUrl = new URLSearchParams(window.location.search).get('gclid');
+  return fromUrl || '';
+}
+
 // Country codes data
 var waCountries = [
   { name: "Indonesia", code: "ID", dial: "62" },
@@ -123,9 +140,14 @@ var waCountries = [
   { name: "Papua New Guinea", code: "PG", dial: "675" },
 ];
 
-// Convert country code to flag emoji
-function countryFlag(code) {
-  return String.fromCodePoint(...[...code.toUpperCase()].map(c => 0x1F1E6 - 65 + c.charCodeAt(0)));
+// Convert country code to flag image URL
+function countryFlagUrl(code) {
+  return 'https://flagcdn.com/w40/' + code.toLowerCase() + '.png';
+}
+
+// Generate flag img tag
+function countryFlagImg(code) {
+  return '<img src="' + countryFlagUrl(code) + '" alt="' + code + '" class="wa-flag-img">';
 }
 
 // Toggle chat box visibility
@@ -155,11 +177,11 @@ document.addEventListener('DOMContentLoaded', function () {
     waCountries.forEach(function (c) {
       if (q && c.name.toLowerCase().indexOf(q) === -1 && c.dial.indexOf(q) === -1) return;
       var li = document.createElement('li');
-      li.innerHTML = '<span class="cc-flag">' + countryFlag(c.code) + '</span>' +
+      li.innerHTML = '<span class="cc-flag">' + countryFlagImg(c.code) + '</span>' +
         '<span class="cc-name">' + c.name + '</span>' +
         '<span class="cc-dial">+' + c.dial + '</span>';
       li.addEventListener('click', function () {
-        countryFlag_el.textContent = countryFlag(c.code);
+        countryFlag_el.innerHTML = countryFlagImg(c.code);
         if (countryCodeText_el) {
           countryCodeText_el.textContent = c.code + ' +' + c.dial;
         }
@@ -333,14 +355,14 @@ function validateForm() {
 
   // Message validation - minimum 5 words
   const message = document.getElementById('wa-message').value;
-  const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
+  // const wordCount = message.trim().split(/\s+/).filter(word => word.length > 0).length;
   if (!message) {
     document.getElementById('error-message').textContent = 'Message is required';
     isValid = false;
-  } else if (wordCount < 5) {
-    document.getElementById('error-message').textContent = 'Message must be at least 5 words';
-    isValid = false;
-  }
+  } //else if (wordCount < 1) {
+  //  document.getElementById('error-message').textContent = 'Message must be at least 5 words';
+  //  isValid = false;
+  //}
 
   // Privacy policy acceptance validation
   const privacy = document.getElementById('wa-privacy').checked;
@@ -416,6 +438,8 @@ function sendWhatsapp() {
       formData.append('message', message);
       formData.append('url', window.location.href);
       formData.append('newsletter', newsletter);
+      formData.append('gclid', getGclid());
+      formData.append('first_url', getCookieValue('first_url_cookie') || window.location.href);
 
       return fetch(waGreeting.ajax_url, {
         method: 'POST',
@@ -446,7 +470,7 @@ function sendWhatsapp() {
         document.getElementById('wa-service-wrapper').style.display = 'none';
         document.getElementById('wa-number').value = '';
         document.getElementById('wa-country-code').value = '62';
-        document.getElementById('wa-country-flag').textContent = countryFlag('ID');
+        document.getElementById('wa-country-flag').innerHTML = countryFlagImg('ID');
         document.getElementById('wa-message').value = '';
         document.getElementById('wa-privacy').checked = false;
         document.getElementById('wa-newsletter').checked = false;
